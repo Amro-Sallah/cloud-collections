@@ -868,8 +868,7 @@ function voicePage(id,lang){return ['<!DOCTYPE html><html><head><meta charset="u
 let micSeq=0,voiceWin=null;const micTargets={};
 window.addEventListener('message',e=>{const d=e.data;if(!d||d.t!=='ccv'||!voiceWin||e.source!==voiceWin)return;const ta=micTargets[d.id];if(d.lang)LS.set('cc_vlang',d.lang);if(!ta||!ta.isConnected||!String(d.text||'').trim())return;
   const cur=ta.value;ta.value=cur+(cur&&!/\s$/.test(cur)?' ':'')+String(d.text).trim();ta.dispatchEvent(new Event('input',{bubbles:true}));ta.focus();if(ta.id==='aitx')aiSend();else toast('Voice text added ✓')});
-function openVoice(ta){const id='v'+(++micSeq);micTargets[id]=ta;const u=URL.createObjectURL(new Blob([voicePage(id,LS.get('cc_vlang')||'ar-EG')],{type:'text/html'}));
-  const w=window.open(u,'ccvoice','width=460,height=620');voiceWin=w;if(!w)toast('Allow pop-ups for this page to use voice typing',true)}
+function openVoice(ta){toast('Opening the voice-ready app…');window.open('https:\/\/amro-sallah.github.io\/cloud-collections\/','_top')}
 function micify(root){(root||document).querySelectorAll('textarea.inp:not([data-mic])').forEach(ta=>{ta.dataset.mic='1';const w=document.createElement('div');w.className='vwrap';ta.parentNode.insertBefore(w,ta);w.appendChild(ta);
   const b=document.createElement('button');b.type='button';b.className='micb';b.title='Speak instead of typing (Arabic or English)';b.textContent='🎤';b.onclick=e=>{e.preventDefault();e.stopPropagation();if(micInline())aiVoice(ta,b);else openVoice(ta)};w.appendChild(b)})}
 new MutationObserver(()=>micify()).observe(document.body,{childList:true,subtree:true});
@@ -880,7 +879,7 @@ function openAI(prefill){if(!S.ai&&aiNotReady())return;let p=$('.aip');
     p.innerHTML=`<div class="mh"><div class="t">✨ AI assistant<small class="muted" id="aictx" style="display:block;font-size:11px;font-weight:500"></small><small class="muted" id="aiq2" style="display:block;font-size:10.5px;font-weight:500"></small></div><button class="btn sm ghost" id="aiclr" title="New chat">New chat</button><button class="btn sm ghost" id="aicl">✕</button></div>
     <div class="aimsgs" id="aimsgs"></div>
     <div class="aicomp"><div class="aithumbs" id="aith"></div><div class="aibar"><label class="btn sm aiib" title="Add photos">📷<input type="file" id="aifl" accept="image/&#42;" multiple hidden></label>
-    <textarea class="inp" id="aitx" data-mic="1" rows="2" dir="auto" placeholder="Type or speak… e.g. Make a product like this photo with the same data as CLD-1001 · Use the same size ratio and quantities as style X"></textarea>
+    <textarea class="inp" id="aitx" data-mic="1" rows="2" dir="auto" placeholder="Type or speak…"></textarea>
     <button class="btn sm aiib" id="aimic" title="Speak (Arabic or English)">🎤</button><button class="btn pri sm" id="aisend">Send</button></div></div>`;
     p.files=[];
     $('#aicl',p).onclick=()=>p.classList.remove('open');
@@ -902,7 +901,7 @@ function actHtml(a,mi,ai){const ch=a.changes||[];const lines=ch.slice(0,10).map(
   return `<label class="acard"><input type="checkbox" data-a="${mi}:${ai}" ${a.blocked&&a.blocked.length&&!ch.length?'':'checked'}><div style="flex:1;min-width:0"><div>${head}</div>${a.label?`<div class="muted">${esc(a.label)}</div>`:''}<div class="ach">${lines||'<span class="muted">No field changes</span>'}</div>
    ${a.blocked&&a.blocked.length?`<div class="warn" style="margin-top:4px">Not your fields (skipped): ${esc(a.blocked.join(', '))}</div>`:''}${a.asRequest?'<div class="muted" style="margin-top:4px">→ goes to the admin as a request for approval</div>':''}</div></label>`}
 function drawChat(){const box=$('#aimsgs');if(!box)return;
-  if(!S.chat.length){box.innerHTML=`<div class="am a">Hi ${esc(S.user.name)} 👋<br>Tell me what you need and I'll do it in the sheet — within your permissions. Write or speak in English or Arabic.<br><br><span class="muted">• Send a photo and say: make a product like this with the same data as style X<br>• Use the same size ratio and quantities as this product<br>• Change the factory of all Jackets to Tricona<br>• How many styles still have no tech pack?</span></div>`;return}
+  if(!S.chat.length){box.innerHTML=`<div class="am a">Hi ${esc(S.user.name)} 👋<br>What should I do? Type or tap 🎤.</div>`;return}
   box.innerHTML=S.chat.map((m,mi)=>{if(m.role==='user')return `<div class="am u" dir="auto">${esc(m.text)}${(m.thumbs||[]).map(u=>`<img src="${u}">`).join('')}</div>`;
     if(m.role==='wait')return '<div class="am a"><span class="spin"></span> Thinking…</div>';
     let h=`<div class="am a"><div dir="auto">${esc(m.text||'')}</div>`;
