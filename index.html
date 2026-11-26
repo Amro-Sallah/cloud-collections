@@ -907,7 +907,7 @@ function micify(root){(root||document).querySelectorAll('textarea.inp:not([data-
 new MutationObserver(()=>micify()).observe(document.body,{childList:true,subtree:true});
 S.chat=S.chat||[];
 function ensureFab(){let f=$('.aifab');if(!isFull()){if(f)f.remove();return}if(!f){f=document.createElement('button');f.className='aifab';f.textContent='✨ AI';f.onclick=()=>openAI();document.body.appendChild(f)}}
-function openAI(prefill){if(!S.ai&&aiNotReady())return;let p=$('.aip');
+function openAI(prefill){if(!S.ai&&aiNotReady())return;if(!S.aiWarm||Date.now()-S.aiWarm>480000){S.aiWarm=Date.now();call('aiWarm').catch(()=>{})}let p=$('.aip');
   if(!p){p=document.createElement('div');p.className='aip';document.body.appendChild(p);
     p.innerHTML=`<div class="mh"><div class="t">✨ AI assistant<small class="muted" id="aictx" style="display:block;font-size:11px;font-weight:500"></small><small class="muted" id="aiq2" style="display:block;font-size:10.5px;font-weight:500"></small></div><button class="btn sm ghost" id="aiclr" title="New chat">New chat</button><button class="btn sm ghost" id="aicl">✕</button></div>
     <div class="aimsgs" id="aimsgs"></div>
@@ -958,10 +958,10 @@ async function aiSend(audio,pv){const p=$('.aip');const tx=$('#aitx',p);const te
   $('#aisend',p).disabled=false;drawChat()}
 async function aiApplyMsg(mi,btn){const m=S.chat[mi];const sel=[...document.querySelectorAll(`[data-a^="${mi}:"]`)].filter(x=>x.checked).map(x=>m.actions[Number(x.dataset.a.split(':')[1])]);
   if(!sel.length)return toast('Nothing selected',true);btn.disabled=true;btn.innerHTML='<span class="spin"></span> Applying…';
-  try{const r=await call('aiApply',{cid:m.cid,tab:m.tab,images:m.images,actions:sel.map(a=>({type:a.type,row:a.row,rows:a.rows,items:a.items,stage:a.stage,dept:a.dept,key:a.key,copyFrom:a.copyFrom,values:a.values,photo:a.photo,label:a.label}))});
+  try{const r=await call('aiApply',{cid:m.cid,tab:m.tab,images:m.images,actions:sel.map(a=>({type:a.type,row:a.row,rows:a.rows,items:a.items,stage:a.stage,dept:a.dept,key:a.key,copyFrom:a.copyFrom,values:a.values,photo:a.photo,photoUrl:a.photoUrl||null,label:a.label,cid:a.cid||m.cid,tab:a.tab||m.tab}))});
     const ok=r.done.filter(x=>x.ok),bad=r.done.filter(x=>x.error);
     m.applied=`<b style="color:var(--ok)">✓ Done</b> — ${ok.map(x=>x.request?`request sent for approval (${esc(x.label||'')})`:x.deleted!=null?`${x.deleted} row(s) deleted${x.skipped&&x.skipped.length?' · skipped '+esc(x.skipped.join(', '))+' (sheet changed — ask again)':''}`:x.stage?`stage set to ${esc(x.stage)}`:x.row?`new product added at row ${x.row}`:`${esc(x.label||'updated')}: ${x.changed} field(s)${x.skipped&&x.skipped.length?' · skipped '+esc(x.skipped.join(', ')):''}`).join(' · ')}${bad.length?`<div class="warn">${bad.map(x=>esc((x.label||'')+': '+x.error)).join('<br>')}</div>`:''}`;
-    S.tc={};if(S.tab===m.tab&&S.cid===m.cid)selectTab(S.tab,true,true).catch(()=>{});pollNotifs()}
+    S.tc={};selectTab(S.tab,true,true).catch(()=>{});pollNotifs()}
   catch(e){m.applied=`<span class="warn">✕ ${esc(e.message)}</span>`}drawChat()}
 function micInline(){return window.top===window&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)}
 function b64OfBytes(u8){let s='';const n=0x8000;for(let i=0;i<u8.length;i+=n)s+=String.fromCharCode.apply(null,u8.subarray(i,i+n));return btoa(s)}
