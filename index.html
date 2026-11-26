@@ -58,14 +58,14 @@ a{color:inherit}
 .wrap{padding:8px 20px 40px}
 .secttl{grid-column:1/-1;font-weight:700;font-size:14px;margin:18px 0 2px;display:flex;align-items:center;gap:10px}
 .secttl:after{content:"";flex:1;height:1px;background:var(--line)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px}
 .card{background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--line);cursor:pointer;transition:transform .15s, box-shadow .15s;display:flex;flex-direction:column}
 .card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.08)}
 .fbs{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px}.fb{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:#f1efea;color:#333;white-space:nowrap}
 .fb.cx{background:#d92d20;color:#fff}.fb.pd{background:#f79009;color:#fff}.fb.lt{background:#fdecec;color:#b42318}.fb.ok{background:#e9f7ef;color:#1f6b3f}
 .card.fcx{border:2px solid #d92d20}.card.fcx .ph img{opacity:.45;filter:grayscale(1)}.card.fpd{border:2px solid #f79009}.card.flt{border:2px solid #f4a39b}
 .ph{position:relative;aspect-ratio:3/4;background:linear-gradient(135deg,#efede7,#e4e1d9);overflow:hidden}
-.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph img{width:100%;height:100%;object-fit:contain;display:block}
 img.px:not(.ok){opacity:0}
 img.px.ok{opacity:1;transition:opacity .25s}
 .hero .none,.ph .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#a9a59b;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
@@ -330,6 +330,17 @@ img,canvas,video,iframe{max-width:100%}
 .micb.rec{background:#dc2626;color:#fff;border-color:#dc2626;animation:recp 1.2s infinite}
 .aiib.rec,.micb.rec{position:relative}.aiib.rec:after,.micb.rec:after{content:attr(data-t);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:#dc2626;font-weight:700}
 @media(max-width:820px){input,textarea,select,.inp{font-size:16px!important}}
+.card{border:1px solid #ebe8e1;border-radius:14px;box-shadow:none}.card:hover{transform:none;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+.card .ph{aspect-ratio:4/5;background:#f7f6f3;padding:10px;box-sizing:border-box}.card .ph img{border-radius:6px}
+.card .cb{padding:14px 16px 14px;gap:5px}.card .cn{font-size:14.5px;font-weight:600;color:#1a1a1a}.card .cc{font-size:11.5px;color:#8a867d;letter-spacing:0}
+.cst{display:flex;align-items:center;gap:6px;font-size:12px;color:#3d3a35;margin-top:4px;min-width:0}.sdot{width:7px;height:7px;border-radius:50%;background:#7c7768;flex:none}.stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tpx{margin-left:auto;flex:none;font-size:10px;font-weight:700;color:#b42318;border:1px solid #f3c4bf;border-radius:4px;padding:0 5px;line-height:16px}
+.cline{font-size:12px;color:#8a867d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .fbs{margin:6px 0 0}.card .fb{font-size:10.5px;font-weight:600;padding:2px 8px}
+.card .stg{margin-top:6px}.card .cf{border-top:1px solid #f0eee9;padding-top:10px;margin-top:10px}
+.card.fcx{border:1.5px solid #e5534b}.card.fpd{border:1.5px solid #f5a524}.card.flt{border:1.5px solid #f2b8b2}
+.card .cf>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.card .cf>span:last-child{flex:none;white-space:nowrap;padding-left:8px}
+@media(max-width:820px){.cards{gap:12px}.card .ph{padding:6px}.card .cb{padding:10px 11px 11px}.card .cn{font-size:13.5px}}
 </style>
 </head>
 <body>
@@ -516,10 +527,10 @@ function renderCards(){const d=S.data,K=d.K,rows=filtered();let h='<div class="c
     const name=v(K.name)||v(K.code)||('Row '+r.r);const colors=v(K.color).split(/\n|,|[/]/).map(x=>x.trim()).filter(Boolean);
     const fi=finalInfo(d,grp);
     h+=`<div class="card${fi&&fi.k?' f'+fi.k:''}" data-r="${r.r}"><div class="ph">${img?`<img class="px" data-px="${esc(img)}" alt="">`:'<div class="none">No photo</div>'}
-      <div class="bl">${v(K.status)?`<span class="pill dark${fitC(v(K.status))}" title="${esc(v(K.status))}">${esc(v(K.status))}</span>`:''}${v(K.fob)?`<span class="pill${fitC(v(K.fob))}" title="${esc(v(K.fob))}">${esc(v(K.fob))}</span>`:''}</div>
-      <div class="br">${tp?'<span class="pill" style="background:#fdecec;color:#b42318">PDF Tech pack</span>':''}</div></div>
-      <div class="cb"><div class="cn">${rowRecent(d,r)?'<span class="chgdot" title="Edited in the last 7 days"></span>':''}${esc(name)}</div><div class="cc">${esc(v(K.code))}${v(K.season)?' · '+esc(v(K.season)):''}${grp.length>1?` · <b>${grp.length} sizes/colours</b>`:''}</div>
-      <div class="ctags">${tagHtml(v(K.category))}${tagHtml(v(K.ptype))}${tagHtml(v(K.fabric))}</div>
+</div>
+      <div class="cb"><div class="cn">${rowRecent(d,r)?'<span class="chgdot" title="Edited in the last 7 days"></span>':''}${esc(name)}</div><div class="cc">${esc(v(K.code))}${v(K.season)?' · '+esc(v(K.season)):''}${grp.length>1?` · ${grp.length} sizes/colours`:''}</div>
+      ${v(K.status)||tp?`<div class="cst">${v(K.status)?`<span class="sdot"></span><span class="stx" title="${esc(v(K.status))}">${esc(v(K.status))}</span>`:''}${tp?'<span class="tpx">PDF</span>':''}</div>`:''}
+      ${(()=>{const L=[v(K.category),v(K.ptype),v(K.fabric),v(K.fob)].filter(Boolean);return L.length?`<div class="cline" title="${esc(L.join(' · '))}">${esc(L.join(' · '))}</div>`:''})()}
       ${fi?`<div class="fbs">${fi.h}</div>`:''}${(()=>{const s=rowStage(d,r);const n=(S.stages||[]).length||1;const i=s?stageIdx(s.s):-1;return `<div class="stg"><span>${s?'<b>'+esc(s.s)+'</b>':'Stage not set'}</span><span>${s?esc(s.d||''):''}</span></div><div class="prog"><i style="width:${i>=0?Math.round((i+1)/n*100):0}%"></i></div>`})()}<div class="cf"><span>${v(K.factory)?'🏭 '+esc(v(K.factory)):(colors.length?esc(colors.slice(0,3).join(' · ')):'')}</span><span>${K.qty>=0&&(grp.length>1?gq:v(K.qty))?'<b>'+esc(grp.length>1?gq.toLocaleString():v(K.qty))+'</b> pcs':''}</span></div></div></div>`}
   h+='</div>';if(!n)h='<div class="loading">No items match.</div>';
   const b=$('#body');b.innerHTML=h;pxScan();b.onclick=e=>{const c=e.target.closest('.card');if(c)openPage(Number(c.dataset.r))}}
@@ -935,11 +946,11 @@ function drawChat(){const box=$('#aimsgs');if(!box)return;
   box.querySelectorAll('[data-apply]').forEach(b=>b.onclick=()=>aiApplyMsg(Number(b.dataset.apply),b));
   box.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>{const m=S.chat[Number(b.dataset.cancel)];m.applied='<span class="muted">Cancelled — nothing changed.</span>';drawChat()});
   box.scrollTop=box.scrollHeight}
-async function aiSend(audio){const p=$('.aip');const tx=$('#aitx',p);const text=tx.value.trim();if(!text&&!p.files.length&&!audio)return;if(!S.data)return toast('Open a tab first',true);
+async function aiSend(audio,pv){const p=$('.aip');const tx=$('#aitx',p);const text=tx.value.trim();if(!text&&!p.files.length&&!audio)return;if(!S.data)return toast('Open a tab first',true);
   const files=p.files.slice();p.files=[];drawThumbs();tx.value='';
   const images=await shrinkAll(files);const thumbs=images.map(x=>'data:'+x.mime+';base64,'+x.data);
   const history=S.chat.filter(m=>m.role==='user'||m.role==='ai').slice(-8).map(m=>({role:m.role,text:m.text}));
-  const um={role:'user',text:audio?(text?text+' ':'')+'🎤 Voice message…':text,thumbs};S.chat.push(um);S.chat.push({role:'wait'});drawChat();$('#aisend',p).disabled=true;
+  const um={role:'user',text:audio?(text?text+' ':'')+'🎤 '+(pv?pv+' …':'Voice message…'):text,thumbs};S.chat.push(um);S.chat.push({role:'wait'});drawChat();$('#aisend',p).disabled=true;
   try{const r=await call('aiAgent',{cid:S.cid,tab:S.tab,text,images,audio:audio||null,focusRow:S.cur||null,history});S.chat.pop();
     if(audio)um.text=(text?text+' ':'')+'🎤 '+(r.heard||'(voice)');
     S.chat.push({role:'ai',text:r.reply||(r.actions.length||(r.pics||[]).length?'':'—'),actions:r.actions,images,tab:S.tab,cid:S.cid,pics:r.pics||[],sources:r.sources||[]});if(r.quota){const q=$('#aiq2');if(q)q.textContent=`AI budget: $${r.quota.spent.toFixed(2)} of $${r.quota.allow.toFixed(2)} used this month`}}
@@ -969,9 +980,9 @@ async function aiVoice(ta,btn){
   if(!micInline())return openVoice(ta);
   if(REC){const r=REC;REC=null;clearInterval(r.timer);btn.classList.remove('rec');btn.disabled=true;
     try{const live=await liveStop(r);const a=await r.stop();if(a.secs<0.6&&!live){toast('Too short — hold on and speak, then tap again',true);return}
-      if(live){ta.value=(r.base?r.base+' ':'')+live;if(ta.id==='aitx'){ta.placeholder=ta.dataset.ph||ta.placeholder;await aiSend()}else{ta.dispatchEvent(new Event('input',{bubbles:true}));ta.focus()}return}
-      if(ta.id==='aitx'){ta.placeholder=ta.dataset.ph||ta.placeholder;ta.value=r.base||'';await aiSend(a)}
-      else{btn.textContent='…';const t=await call('aiTranscribe',{audio:a});if(t.text){const cur=ta.value;ta.value=cur+(cur&&!/\s$/.test(cur)?' ':'')+t.text.trim();ta.dispatchEvent(new Event('input',{bubbles:true}));ta.focus()}else toast('Could not hear anything — try again',true)}}
+      if(a.secs<0.6&&live){ta.value=(r.base?r.base+' ':'')+live;if(ta.id==='aitx'){ta.placeholder=ta.dataset.ph||ta.placeholder;await aiSend()}return}
+      if(ta.id==='aitx'){ta.placeholder=ta.dataset.ph||ta.placeholder;ta.value=r.base||'';await aiSend(a,live)}
+      else{ta.value=r.base||'';btn.textContent='…';const t=await call('aiTranscribe',{audio:a});if(t.text){const cur=ta.value;ta.value=cur+(cur&&!/\s$/.test(cur)?' ':'')+t.text.trim();ta.dispatchEvent(new Event('input',{bubbles:true}));ta.focus()}else toast('Could not hear anything — try again',true)}}
     catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent='🎤'}return}
   try{REC=await recStart(btn);REC.ta=ta;btn.classList.add('rec');btn.textContent='■';if(ta.id==='aitx'){ta.dataset.ph=ta.placeholder;ta.placeholder='Listening… speak, then tap ■ to send'}liveStart(REC,ta)}
   catch(e){REC=null;toast(e.message,true)}}
