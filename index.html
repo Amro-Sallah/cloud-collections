@@ -322,6 +322,7 @@ img,canvas,video,iframe{max-width:100%}
 @media(max-width:820px){.aifab{right:12px;bottom:12px;padding:11px 15px}}
 .vtab{overflow-x:auto}.vtab tr.cur td{background:#f0f9ff;font-weight:600}
 .micb.rec{background:#dc2626;color:#fff;border-color:#dc2626;animation:recp 1.2s infinite}
+.aiib.rec,.micb.rec{position:relative}.aiib.rec:after,.micb.rec:after{content:attr(data-t);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:#dc2626;font-weight:700}
 </style>
 </head>
 <body>
@@ -891,12 +892,13 @@ function drawChat(){const box=$('#aimsgs');if(!box)return;
   box.querySelectorAll('[data-apply]').forEach(b=>b.onclick=()=>aiApplyMsg(Number(b.dataset.apply),b));
   box.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>{const m=S.chat[Number(b.dataset.cancel)];m.applied='<span class="muted">Cancelled — nothing changed.</span>';drawChat()});
   box.scrollTop=box.scrollHeight}
-async function aiSend(){const p=$('.aip');const tx=$('#aitx',p);const text=tx.value.trim();if(!text&&!p.files.length)return;if(!S.data)return toast('Open a tab first',true);
+async function aiSend(audio){const p=$('.aip');const tx=$('#aitx',p);const text=tx.value.trim();if(!text&&!p.files.length&&!audio)return;if(!S.data)return toast('Open a tab first',true);
   const files=p.files.slice();p.files=[];drawThumbs();tx.value='';
   const images=await shrinkAll(files);const thumbs=images.map(x=>'data:'+x.mime+';base64,'+x.data);
   const history=S.chat.filter(m=>m.role==='user'||m.role==='ai').slice(-8).map(m=>({role:m.role,text:m.text}));
-  S.chat.push({role:'user',text,thumbs});S.chat.push({role:'wait'});drawChat();$('#aisend',p).disabled=true;
-  try{const r=await call('aiAgent',{cid:S.cid,tab:S.tab,text,images,focusRow:S.cur||null,history});S.chat.pop();
+  const um={role:'user',text:audio?(text?text+' ':'')+'🎤 Voice message…':text,thumbs};S.chat.push(um);S.chat.push({role:'wait'});drawChat();$('#aisend',p).disabled=true;
+  try{const r=await call('aiAgent',{cid:S.cid,tab:S.tab,text,images,audio:audio||null,focusRow:S.cur||null,history});S.chat.pop();
+    if(audio)um.text=(text?text+' ':'')+'🎤 '+(r.heard||'(voice)');
     S.chat.push({role:'ai',text:r.reply||(r.actions.length?'':'—'),actions:r.actions,images,tab:S.tab,cid:S.cid})}
   catch(e){S.chat.pop();S.chat.push({role:'ai',text:'✕ '+e.message})}
   $('#aisend',p).disabled=false;drawChat()}
@@ -907,16 +909,28 @@ async function aiApplyMsg(mi,btn){const m=S.chat[mi];const sel=[...document.quer
     m.applied=`<b style="color:var(--ok)">✓ Done</b> — ${ok.map(x=>x.request?`request sent (${esc(x.label||'new product')})`:x.row?`new product added at row ${x.row}`:`${esc(x.label||'updated')}: ${x.changed} field(s)${x.skipped&&x.skipped.length?' · skipped '+esc(x.skipped.join(', ')):''}`).join(' · ')}${bad.length?`<div class="warn">${bad.map(x=>esc((x.label||'')+': '+x.error)).join('<br>')}</div>`:''}`;
     S.tc={};if(S.tab===m.tab&&S.cid===m.cid)selectTab(S.tab,true,true).catch(()=>{});pollNotifs()}
   catch(e){m.applied=`<span class="warn">✕ ${esc(e.message)}</span>`}drawChat()}
-function micInline(){try{const pp=document.permissionsPolicy||document.featurePolicy;return !!(pp&&pp.allowsFeature&&pp.allowsFeature('microphone'))&&!!(window.SpeechRecognition||window.webkitSpeechRecognition)}catch(e){return false}}
-let aiRec=null;
-function aiVoice(ta,btn){if(aiRec){try{aiRec.stop()}catch(e){}aiRec=null;btn.classList.remove('rec');return}
+function micInline(){return window.top===window&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)}
+function b64OfBytes(u8){let s='';const n=0x8000;for(let i=0;i<u8.length;i+=n)s+=String.fromCharCode.apply(null,u8.subarray(i,i+n));return btoa(s)}
+function wavB64(chunks,sr){let len=0;chunks.forEach(c=>len+=c.length);const all=new Float32Array(len);let o=0;chunks.forEach(c=>{all.set(c,o);o+=c.length});
+  const tr=16000,ratio=sr/tr,n=Math.floor(all.length/ratio),pcm=new Int16Array(n);for(let i=0;i<n;i++){const v=Math.max(-1,Math.min(1,all[Math.floor(i*ratio)]));pcm[i]=v<0?v*0x8000:v*0x7fff}
+  const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);const ws=(off,str)=>{for(let i=0;i<str.length;i++)dv.setUint8(off+i,str.charCodeAt(i))};
+  ws(0,'RIFF');dv.setUint32(4,36+pcm.length*2,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,tr,true);dv.setUint32(28,tr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);return {mime:'audio/wav',data:b64OfBytes(new Uint8Array(buf)),secs:n/tr}}
+let REC=null;
+async function recStart(btn){const AC=window.AudioContext||window.webkitAudioContext;const ac=new AC();try{await ac.resume()}catch(e){}
+  let st;try{st=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}})}catch(e){try{ac.close()}catch(x){}throw new Error(e&&e.name==='NotAllowedError'?'Allow the microphone for this page (browser settings), then try again':'Microphone not available: '+(e.message||e.name))}
+  const src=ac.createMediaStreamSource(st),pr=ac.createScriptProcessor(4096,1,1),chunks=[];pr.onaudioprocess=e=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));src.connect(pr);pr.connect(ac.destination);
+  const r={btn,chunks,t0:Date.now(),stop:async()=>{try{pr.disconnect();src.disconnect()}catch(e){}st.getTracks().forEach(t=>t.stop());const sr=ac.sampleRate;try{await ac.close()}catch(e){}return wavB64(chunks,sr)}};
+  r.timer=setInterval(()=>{const s=Math.round((Date.now()-r.t0)/1000);btn.dataset.t=s+'s';if(s>=90)btn.click()},500);return r}
+async function aiVoice(ta,btn){
   if(!micInline())return openVoice(ta);
-  const R=window.SpeechRecognition||window.webkitSpeechRecognition;const rec=new R();aiRec=rec;rec.lang=LS.get('cc_vlang')||'ar-EG';rec.continuous=true;rec.interimResults=true;
-  const base=ta.value?ta.value.replace(/\s*$/,' '):'';btn.classList.add('rec');
-  rec.onresult=e=>{let s='';for(let i=0;i<e.results.length;i++)s+=e.results[i][0].transcript;ta.value=base+s};
-  rec.onerror=e=>{if(e.error==='not-allowed'){aiRec=null;btn.classList.remove('rec');openVoice(ta)}};
-  rec.onend=()=>{if(aiRec===rec){try{rec.start()}catch(e){}}else{btn.classList.remove('rec');if(ta.id==='aitx'&&ta.value.trim())aiSend()}};
-  try{rec.start()}catch(e){aiRec=null;btn.classList.remove('rec');openVoice(ta)}}
+  if(REC){const r=REC;REC=null;clearInterval(r.timer);btn.classList.remove('rec');btn.disabled=true;
+    try{const a=await r.stop();if(a.secs<0.6){toast('Too short — hold on and speak, then tap again',true);return}
+      if(ta.id==='aitx'){ta.placeholder=ta.dataset.ph||ta.placeholder;await aiSend(a)}
+      else{btn.textContent='…';const t=await call('aiTranscribe',{audio:a});if(t.text){const cur=ta.value;ta.value=cur+(cur&&!/\s$/.test(cur)?' ':'')+t.text.trim();ta.dispatchEvent(new Event('input',{bubbles:true}));ta.focus()}else toast('Could not hear anything — try again',true)}}
+    catch(e){toast(e.message,true)}finally{btn.disabled=false;btn.textContent='🎤'}return}
+  try{REC=await recStart(btn);btn.classList.add('rec');btn.textContent='■';if(ta.id==='aitx'){ta.dataset.ph=ta.placeholder;ta.placeholder='Listening… speak Arabic or English, then tap ■ to send'}}
+  catch(e){REC=null;toast(e.message,true)}}
 boot();
 </script>
 </body>
