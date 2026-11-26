@@ -500,12 +500,14 @@ function fitC(v){const n=String(v||'').length;return n>24?' xs':n>14?' sm':''}
 function tagHtml(v){return v?`<span class="tag${fitC(v)}" style="${tagStyle(v)}" title="${esc(v)}">${esc(v)}</span>`:''}
 function finalIdx(d){if(d._fi===undefined)d._fi=d.columns.findIndex(c=>/^\s*final(\s*date)?\s*$/i.test(String(c.name||'')));return d._fi}
 function dropDue(){const c=(S.collections||[]).find(x=>x.id===S.cid);const n=String(c?c.name:'');return /ramadan/i.test(n)?new Date(2027,0,20):/spring|march|\bmar\b/i.test(n)?new Date(2027,2,15):/dec|jan/i.test(n)?new Date(2026,11,15):null}
-function parseDay(s){s=String(s||'').trim();let m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/);if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1])}m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);return null}
+function parseDay(s){s=String(s||'');let m=s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return {d:+m[1],m:+m[2],y}}m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return {d:+m[3],m:+m[2],y:+m[1]};return null}
+function fixYear(p,due){if(!due)return new Date(p.y,p.m-1,p.d);let best=null;[due.getFullYear()-1,due.getFullYear(),due.getFullYear()+1].forEach(y=>{const t=new Date(y,p.m-1,p.d);if(!best||Math.abs(t-due)<Math.abs(best-due))best=t});return best}
 function finalInfo(d,grp){const i=finalIdx(d);if(i<0)return null;const s=grp.map(x=>String(x.c[i]==null?'':x.c[i]).trim()).find(Boolean);if(!s)return null;
   if(/cancel/i.test(s))return {k:'cx',h:'<span class="fb cx">✕ CANCELLED</span>'};
-  if(/pend/i.test(s))return {k:'pd',h:'<span class="fb pd">⏳ PENDING</span>'};
-  const dt=parseDay(s);if(!dt)return {k:'',h:`<span class="fb">${esc(s)}</span>`};const due=dropDue();const late=!!(due&&dt>due);
-  return {k:late?'lt':'',h:`<span class="fb dt">📅 ${dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>${due?`<span class="fb ${late?'lt':'ok'}">${late?'⚠ LATE':'✓ ON TIME'}</span>`:''}`}}
+  const pend=/pend/i.test(s),p=parseDay(s);
+  if(!p||p.m<1||p.m>12||p.d<1||p.d>31)return pend?{k:'pd',h:'<span class="fb pd">⏳ PENDING</span>'}:{k:'',h:`<span class="fb">${esc(s)}</span>`};
+  const due=dropDue(),dt=fixYear(p,due),late=!!(due&&dt>due);
+  return {k:pend?'pd':(late?'lt':''),h:`${pend?'<span class="fb pd">⏳ PENDING</span>':''}<span class="fb dt">📅 ${dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>${due?`<span class="fb ${late?'lt':'ok'}">${late?'⚠ LATE':'✓ ON TIME'}</span>`:''}`}}
 function renderCards(){const d=S.data,K=d.K,rows=filtered();let h='<div class="cards">',n=0;const seen=new Set(),vis={};
   rows.forEach(r=>{if(r.c&&r.gk)(vis[r.gk]=vis[r.gk]||[]).push(r)});
   for(const r of rows){if(!r.c){h+=`<div class="secttl">${esc(r.s)}</div>`;continue}if(r.gk){if(seen.has(r.gk))continue;seen.add(r.gk)}n++;
