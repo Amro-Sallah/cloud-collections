@@ -331,6 +331,11 @@ img,canvas,video,iframe{max-width:100%}
 .micb.rec{background:#dc2626;color:#fff;border-color:#dc2626;animation:recp 1.2s infinite}
 .aiib.rec,.micb.rec{position:relative}.aiib.rec:after,.micb.rec:after{content:attr(data-t);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;color:#dc2626;font-weight:700}
 @media(max-width:820px){input,textarea,select,.inp{font-size:16px!important}}
+.aip{top:auto;left:auto;right:16px;bottom:16px;width:min(400px,calc(100vw - 24px));height:min(600px,calc(100vh - 32px));height:min(600px,calc(100dvh - 32px));border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.22)}
+.aip .mh{cursor:default}.aip.min{height:auto;width:270px}.aip.min .aimsgs,.aip.min .aicomp,.aip.min #aiclr,.aip.min #aiq2{display:none!important}.aip.min .mh{cursor:pointer}
+.aimin{font-size:16px;line-height:1;width:34px;justify-content:center}
+body.aion .aifab{display:none}
+@media(max-width:820px){.aip{right:8px;left:8px;bottom:8px;width:auto;height:min(78vh,calc(100dvh - 16px))}.aip.min{left:auto;width:250px}}
 .card{border:1px solid #ebe8e1;border-radius:14px;box-shadow:none}.card:hover{transform:none;box-shadow:0 6px 18px rgba(0,0,0,.06)}
 .card .ph{aspect-ratio:4/5;background:#f7f6f3;padding:10px;box-sizing:border-box}.card .ph img{border-radius:6px}
 .card .cb{padding:14px 16px 14px;gap:5px}.card .cn{font-size:14.5px;font-weight:600;color:#1a1a1a}.card .cc{font-size:11.5px;color:#8a867d;letter-spacing:0}
@@ -408,7 +413,7 @@ async function showLogin(){const app=$('#app');app.innerHTML='<div class="loadin
   app.querySelectorAll('.pinpad button').forEach(b=>b.onclick=()=>key(b.dataset.k));
   document.onkeydown=e=>{if(!$('.pinpad'))return;if(/^\d$/.test(e.key))key(e.key);else if(e.key==='Backspace')key('⌫');else if(e.key==='Enter')go()};dots()}
 async function afterLogin(r){document.onkeydown=null;S.token=r.token;LS.set('cc_token',r.token);S.user=r.user;const me=await call('me');S.user=me.user||r.user;S.collections=me.collections;S.ai=!!me.ai;S.stages=me.stages||[];startApp()}
-function signOutLocal(){S.token=null;S.user=null;S.chat=[];LS.del('cc_token');closeAll();document.querySelectorAll('.aifab,.aip').forEach(x=>x.remove());showLogin()}
+function signOutLocal(){S.token=null;S.user=null;S.chat=[];LS.del('cc_token');LS.del('cc_chat');LS.del('cc_ai');document.body.classList.remove('aion');closeAll();document.querySelectorAll('.aifab,.aip').forEach(x=>x.remove());showLogin()}
 
 function startApp(){S.f.mine=S.user.role==='full';ensureFab();
   $('#app').innerHTML=`<div class="top" id="topbar"><div class="brand">CLOUD</div><button class="bell" id="bell" title="Notifications">🔔<b id="bellN" style="display:none"></b></button><button class="menuBtn" id="menuBtn">☰</button><div class="ctabs" id="ctabs"></div><div class="uchip">${isFull()?'<button class="btn sm" id="bReq">+ Request</button>':''}
@@ -960,25 +965,30 @@ function micify(root){(root||document).querySelectorAll('textarea.inp:not([data-
   const b=document.createElement('button');b.type='button';b.className='micb';b.title='Speak instead of typing (Arabic or English)';b.textContent='🎤';b.onclick=e=>{e.preventDefault();e.stopPropagation();if(micInline())aiVoice(ta,b);else openVoice(ta)};w.appendChild(b)})}
 new MutationObserver(()=>micify()).observe(document.body,{childList:true,subtree:true});
 S.chat=S.chat||[];
-function ensureFab(){let f=$('.aifab');if(!isFull()){if(f)f.remove();return}if(!f){f=document.createElement('button');f.className='aifab';f.textContent='✨ AI';f.onclick=()=>openAI();document.body.appendChild(f)}}
+function ensureFab(){let f=$('.aifab');if(!isFull()){if(f)f.remove();return}if(!f){f=document.createElement('button');f.className='aifab';f.textContent='✨ AI';f.onclick=()=>openAI();document.body.appendChild(f)}
+  aiRestore();const st=LS.get('cc_ai');let tries=0;const reopen=()=>{if($('.aip')||!S.user)return;if(!S.data&&tries++<20)return setTimeout(reopen,800);if(!S.ai)return;openAI();if(st==='min')aiMin(true)};if(st==='open'||st==='min')setTimeout(reopen,600)}
 function openAI(prefill){if(!S.ai&&aiNotReady())return;if(!S.aiWarm||Date.now()-S.aiWarm>480000){S.aiWarm=Date.now();call('aiWarm').catch(()=>{})}let p=$('.aip');
   if(!p){p=document.createElement('div');p.className='aip';document.body.appendChild(p);
-    p.innerHTML=`<div class="mh"><div class="t">✨ AI assistant<small class="muted" id="aictx" style="display:block;font-size:11px;font-weight:500"></small><small class="muted" id="aiq2" style="display:block;font-size:10.5px;font-weight:500"></small></div><button class="btn sm ghost" id="aiclr" title="New chat">New chat</button><button class="btn sm ghost" id="aicl">✕</button></div>
+    p.innerHTML=`<div class="mh"><div class="t">✨ AI assistant<small class="muted" id="aictx" style="display:block;font-size:11px;font-weight:500"></small><small class="muted" id="aiq2" style="display:block;font-size:10.5px;font-weight:500"></small></div><button class="btn sm ghost" id="aiclr" title="Start a new chat">New chat</button><button class="btn sm ghost aimin" id="aicl" title="Hide (keeps the chat)">▾</button></div>
     <div class="aimsgs" id="aimsgs"></div>
     <div class="aicomp"><div class="aithumbs" id="aith"></div><div class="aibar"><label class="btn sm aiib" title="Add photos">📷<input type="file" id="aifl" accept="image/&#42;" multiple hidden></label>
     <textarea class="inp" id="aitx" data-mic="1" rows="2" dir="auto" placeholder="Type or speak…"></textarea>
     <button class="btn sm aiib" id="aimic" title="Speak (Arabic or English)">🎤</button><button class="btn pri sm" id="aisend">Send</button></div></div>`;
     p.files=[];
-    $('#aicl',p).onclick=()=>p.classList.remove('open');
-    $('#aiclr',p).onclick=()=>{S.chat=[];drawChat()};
+    $('#aicl',p).onclick=e=>{e.stopPropagation();aiMin(!p.classList.contains('min'))};
+    $('.mh',p).onclick=e=>{if(p.classList.contains('min')&&!e.target.closest('#aiclr'))aiMin(false)};
+    $('#aiclr',p).onclick=e=>{e.stopPropagation();S.chat=[];aiSave();drawChat()};
     $('#aifl',p).onchange=e=>{p.files=p.files.concat(Array.from(e.target.files||[])).slice(0,4);e.target.value='';drawThumbs()};
     $('#aisend',p).onclick=()=>{if(REC&&REC.ta===$('#aitx',p))return aiVoice($('#aitx',p),$('#aimic',p));aiSend()};
     $('#aitx',p).onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();aiSend()}};
     $('#aimic',p).onclick=()=>aiVoice($('#aitx',p),$('#aimic',p));
     p.ondragover=e=>e.preventDefault();p.ondrop=e=>{e.preventDefault();p.files=p.files.concat(Array.from(e.dataTransfer.files).filter(f=>/^image/.test(f.type))).slice(0,4);drawThumbs()};}
-  p.classList.add('open');const ctx=$('#aictx',p);const r=S.cur&&S.data?S.data.rows.find(x=>x.r===S.cur):null;
+  p.classList.add('open');aiMin(false);const ctx=$('#aictx',p);const r=S.cur&&S.data?S.data.rows.find(x=>x.r===S.cur):null;
   ctx.textContent=[(S.tabsMeta||{}).name,S.tab,r?'Product: '+rowKey(S.data,r):''].filter(Boolean).join(' · ');
   if(prefill)$('#aitx',p).value=prefill;drawChat();setTimeout(()=>$('#aitx',p).focus(),50)}
+function aiMin(m){const p=$('.aip');if(!p)return;p.classList.toggle('min',!!m);const b=$('#aicl',p);if(b){b.textContent=m?'▴':'▾';b.title=m?'Show the AI chat':'Hide (keeps the chat)'}document.body.classList.add('aion');LS.set('cc_ai',m?'min':'open');if(!m)setTimeout(()=>{const t=$('#aitx',p);if(t)t.focus()},50)}
+function aiSave(){try{LS.set('cc_chat',JSON.stringify((S.chat||[]).filter(m=>m.role!=='wait').slice(-30).map(m=>({role:m.role,text:m.text,actions:m.actions,applied:m.applied,tab:m.tab,cid:m.cid,pics:m.pics,sources:m.sources}))))}catch(e){}}
+function aiRestore(){if(S.chat&&S.chat.length)return;try{const c=JSON.parse(LS.get('cc_chat')||'[]');if(Array.isArray(c))S.chat=c}catch(e){}}
 function drawThumbs(){const p=$('.aip');$('#aith',p).innerHTML=p.files.map((f,i)=>`<span><img src="${URL.createObjectURL(f)}"><b data-rm="${i}">✕</b></span>`).join('');
   $('#aith',p).querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{p.files.splice(Number(b.dataset.rm),1);drawThumbs()})}
 function actHtml(a,mi,ai){const ch=a.changes||[];const lines=ch.slice(0,10).map(x=>`<div>${esc(x.field)}${x.owner?` <span class="muted">(${esc(x.owner)})</span>`:''}: ${a.type==='update'&&x.from?`<span class="old">${esc(x.from)}</span> → `:''}<b>${esc(x.to)}</b></div>`).join('')+(ch.length>10?`<div class="muted">+${ch.length-10} more fields</div>`:'');
@@ -987,7 +997,7 @@ function actHtml(a,mi,ai){const ch=a.changes||[];const lines=ch.slice(0,10).map(
   const head=(a.type==='create'?`➕ New product${a.copyFrom?` — copy of <b>${esc(a.copyLabel)}</b>`:''}${a.photo!=null||a.photoUrl?' + photo':''}`:`✎ Update <b>${esc(a.target)}</b>`)+(a.photoUrl?`<img class="aph" src="${esc(a.photoUrl)}" referrerpolicy="no-referrer" onerror="this.remove()">`:'');
   return `<label class="acard"><input type="checkbox" data-a="${mi}:${ai}" ${a.blocked&&a.blocked.length&&!ch.length?'':'checked'}><div style="flex:1;min-width:0"><div>${head}</div>${a.label?`<div class="muted">${esc(a.label)}</div>`:''}<div class="ach">${lines||'<span class="muted">No field changes</span>'}</div>
    ${a.blocked&&a.blocked.length?`<div class="warn" style="margin-top:4px">Not your fields (skipped): ${esc(a.blocked.join(', '))}</div>`:''}${a.asRequest?'<div class="muted" style="margin-top:4px">→ goes to the admin as a request for approval</div>':''}</div></label>`}
-function drawChat(){const box=$('#aimsgs');if(!box)return;
+function drawChat(){aiSave();const box=$('#aimsgs');if(!box)return;
   if(!S.chat.length){box.innerHTML=`<div class="am a">Hi ${esc(S.user.name)} 👋<br>What should I do? Type or tap 🎤.</div>`;return}
   box.innerHTML=S.chat.map((m,mi)=>{if(m.role==='user')return `<div class="am u" dir="auto">${esc(m.text)}${(m.thumbs||[]).map(u=>`<img src="${u}">`).join('')}</div>`;
     if(m.role==='wait')return '<div class="am a"><span class="spin"></span> Thinking…</div>';
