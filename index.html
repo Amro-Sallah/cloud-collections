@@ -87,6 +87,7 @@ img.px.ok{opacity:1;transition:opacity .25s}
 table.g{border-collapse:separate;border-spacing:0;min-width:100%}
 .g th,.g td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;vertical-align:top;background:#fff}
 .g thead th{position:sticky;top:0;z-index:5;background:#fafaf8;text-align:left}
+.g td.stk{position:sticky;left:0;z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06)}.g thead th.stk{left:0;z-index:7;box-shadow:2px 0 4px rgba(0,0,0,.06)}.g tr.sec td{position:static}
 .g th .h{padding:8px 10px;min-width:110px;max-width:240px}
 .g th .hn{font-weight:600;font-size:12px}
 .g th .ho{display:inline-block;margin-top:4px;font-size:10px;padding:2px 7px;border-radius:999px;background:var(--soft);color:#555}
@@ -334,6 +335,7 @@ img,canvas,video,iframe{max-width:100%}
 .card .ph{aspect-ratio:4/5;background:#f7f6f3;padding:10px;box-sizing:border-box}.card .ph img{border-radius:6px}
 .card .cb{padding:14px 16px 14px;gap:5px}.card .cn{font-size:14.5px;font-weight:600;color:#1a1a1a}.card .cc{font-size:11.5px;color:#8a867d;letter-spacing:0}
 .cst{display:flex;align-items:center;gap:6px;font-size:12px;color:#3d3a35;margin-top:4px;min-width:0}.sdot{width:7px;height:7px;border-radius:50%;background:#7c7768;flex:none}.stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pill.dept{background:#eef4ff;color:#1d3f8f}
 .tpx{margin-left:auto;flex:none;font-size:10px;font-weight:700;color:#b42318;border:1px solid #f3c4bf;border-radius:4px;padding:0 5px;line-height:16px}
 .cline{font-size:12px;color:#8a867d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .fbs{margin:6px 0 0}.card .fb{font-size:10.5px;font-weight:600;padding:2px 8px}
@@ -527,24 +529,25 @@ function renderCards(){const d=S.data,K=d.K,rows=filtered();let h='<div class="c
     const name=v(K.name)||v(K.code)||('Row '+r.r);const colors=v(K.color).split(/\n|,|[/]/).map(x=>x.trim()).filter(Boolean);
     const fi=finalInfo(d,grp);
     h+=`<div class="card${fi&&fi.k?' f'+fi.k:''}" data-r="${r.r}"><div class="ph">${img?`<img class="px" data-px="${esc(img)}" alt="">`:'<div class="none">No photo</div>'}
-</div>
+${(()=>{const s=rowStage(d,r);const dp=s?(s.d||((S.stages[stageIdx(s.s)]||{}).dept)||''):'';return `<div class="bl">${v(K.status)?`<span class="pill dark${fitC(v(K.status))}" title="${esc(v(K.status))}">${esc(v(K.status))}</span>`:''}${dp?`<span class="pill dept" title="Now with ${esc(dp)}">📍 ${esc(dp)}</span>`:''}</div>`})()}</div>
       <div class="cb"><div class="cn">${rowRecent(d,r)?'<span class="chgdot" title="Edited in the last 7 days"></span>':''}${esc(name)}</div><div class="cc">${esc(v(K.code))}${v(K.season)?' · '+esc(v(K.season)):''}${grp.length>1?` · ${grp.length} sizes/colours`:''}</div>
-      ${v(K.status)||tp?`<div class="cst">${v(K.status)?`<span class="sdot"></span><span class="stx" title="${esc(v(K.status))}">${esc(v(K.status))}</span>`:''}${tp?'<span class="tpx">PDF</span>':''}</div>`:''}
+      ${tp?`<div class="cst"><span class="tpx" style="margin-left:0">PDF tech pack</span></div>`:''}
       ${(()=>{const L=[v(K.category),v(K.ptype),v(K.fabric),v(K.fob)].filter(Boolean);return L.length?`<div class="cline" title="${esc(L.join(' · '))}">${esc(L.join(' · '))}</div>`:''})()}
       ${fi?`<div class="fbs">${fi.h}</div>`:''}${(()=>{const s=rowStage(d,r);const n=(S.stages||[]).length||1;const i=s?stageIdx(s.s):-1;return `<div class="stg"><span>${s?'<b>'+esc(s.s)+'</b>':'Stage not set'}</span><span>${s?esc(s.d||''):''}</span></div><div class="prog"><i style="width:${i>=0?Math.round((i+1)/n*100):0}%"></i></div>`})()}<div class="cf"><span>${v(K.factory)?'🏭 '+esc(v(K.factory)):(colors.length?esc(colors.slice(0,3).join(' · ')):'')}</span><span>${K.qty>=0&&(grp.length>1?gq:v(K.qty))?'<b>'+esc(grp.length>1?gq.toLocaleString():v(K.qty))+'</b> pcs':''}</span></div></div></div>`}
   h+='</div>';if(!n)h='<div class="loading">No items match.</div>';
   const b=$('#body');b.innerHTML=h;pxScan();b.onclick=e=>{const c=e.target.closest('.card');if(c)openPage(Number(c.dataset.r))}}
 function visibleCols(){const cols=S.data.columns.map((c,k)=>({...c,k}));if(!S.f.mine)return cols;
   return cols.filter(c=>c.k===S.data.keyCode||c.k===S.data.keyName||c.type==='image'||ownerMine(c.owner))}
-function renderTable(){const d=S.data,cols=visibleCols(),rows=filtered(),vTP=tpRealCol()<0;
-  let h='<div class="gridwrap"><table class="g"><thead><tr><th><div class="h" style="min-width:50px"><span class="hn">Row</span></div></th>'+(vTP?`<th><div class="h" style="min-width:120px"><div class="hn">Tech Pack</div><span class="ho">${esc(tpOwner())}</span></div></th>`:'')+cols.map(c=>`<th><div class="h"><div class="hn">${esc(c.name)}</div>${c.owner?`<span class="ho">${esc(c.owner)}</span>`:''}</div></th>`).join('')+'</tr></thead><tbody>';
-  for(const r of rows){if(!r.c){h+=`<tr class="sec"><td colspan="${cols.length+1+(vTP?1:0)}">${esc(r.s)}</td></tr>`;continue}
-    h+=`<tr data-r="${r.r}"><td><div class="rn"><button class="btn sm" data-open="${r.r}">Open</button></div></td>`;
-    if(vTP){const tl=rowTP(d,r);h+=`<td><div class="v">${tl&&tl.length?`<button class="tag" style="background:#dcfce7;color:#166534;border:0;cursor:pointer" data-tpo="${esc(tl[0].id)}" title="Open the latest tech pack">✓ Sent${tl.length>1?' ('+tl.length+')':''}</button>`:'<span class="tag" style="background:#f1f0ec;color:#8a877f">Not sent</span>'}</div></td>`}
-    for(const c of cols){const k=c.k,isF=r.f&&r.f.indexOf(k)>=0,ed=d.canEdit&&canCol(c)&&!isF&&!c.computed&&c.type!=='image',chg=d.recent[r.r+'|'+c.L];
+function renderTable(){const d=S.data,cols0=visibleCols(),rows=filtered(),vTP=tpRealCol()<0;const imgs=cols0.filter(c=>c.type==='image').slice(0,1),cols=cols0.filter(c=>imgs.indexOf(c)<0);
+  const cellHtml=(r,c,stk)=>{const k=c.k,isF=r.f&&r.f.indexOf(k)>=0,ed=d.canEdit&&canCol(c)&&!isF&&!c.computed&&c.type!=='image',chg=d.recent[r.r+'|'+c.L];
       let inner;if(c.type==='image'){const u=r.img&&r.img[k];inner=u&&u!=='sheet'?`<img class="thumb px" data-px="${esc(u)}" data-zoom="${esc(u)}">`:''}
       else if(c.type==='select'&&r.c[k])inner=tagHtml(r.c[k]);else inner=esc(r.c[k]);
-      h+=`<td class="${ed?'ed':''} ${chg?'chg':''}" data-k="${k}" title="${chg?esc('Edited by '+chg.u+' · '+fmtT(chg.t)):''}"><div class="v">${inner}</div></td>`}
+      return `<td class="${ed?'ed':''} ${chg?'chg':''} ${stk?'stk':''}" data-k="${k}" title="${chg?esc('Edited by '+chg.u+' · '+fmtT(chg.t)):''}"><div class="v">${inner}</div></td>`};
+  let h='<div class="gridwrap"><table class="g"><thead><tr>'+imgs.map(c=>`<th class="stk"><div class="h" style="min-width:92px"><div class="hn">${esc(c.name)}</div>${c.owner?`<span class="ho">${esc(c.owner)}</span>`:''}</div></th>`).join('')+'<th><div class="h" style="min-width:50px"><span class="hn">Row</span></div></th>'+(vTP?`<th><div class="h" style="min-width:120px"><div class="hn">Tech Pack</div><span class="ho">${esc(tpOwner())}</span></div></th>`:'')+cols.map(c=>`<th><div class="h"><div class="hn">${esc(c.name)}</div>${c.owner?`<span class="ho">${esc(c.owner)}</span>`:''}</div></th>`).join('')+'</tr></thead><tbody>';
+  for(const r of rows){if(!r.c){h+=`<tr class="sec"><td colspan="${cols.length+1+imgs.length+(vTP?1:0)}">${esc(r.s)}</td></tr>`;continue}
+    h+=`<tr data-r="${r.r}">${imgs.map(c=>cellHtml(r,c,true)).join('')}<td><div class="rn"><button class="btn sm" data-open="${r.r}">Open</button></div></td>`;
+    if(vTP){const tl=rowTP(d,r);h+=`<td><div class="v">${tl&&tl.length?`<button class="tag" style="background:#dcfce7;color:#166534;border:0;cursor:pointer" data-tpo="${esc(tl[0].id)}" title="Open the latest tech pack">✓ Sent${tl.length>1?' ('+tl.length+')':''}</button>`:'<span class="tag" style="background:#f1f0ec;color:#8a877f">Not sent</span>'}</div></td>`}
+    for(const c of cols)h+=cellHtml(r,c,false);
     h+='</tr>'}
   h+='</tbody></table></div>';const b=$('#body');b.innerHTML=h;pxScan();
   b.onclick=e=>{const z=e.target.closest('[data-zoom]');if(z)return zoom(z.dataset.zoom);const tpo=e.target.closest('[data-tpo]');if(tpo)return openTP(tpo.dataset.tpo,tpo);const o=e.target.closest('[data-open]');if(o)return openPage(Number(o.dataset.open));
