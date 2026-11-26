@@ -463,7 +463,7 @@ function rowPasses(r,skip){const f=S.f;
   if(f.dept&&f.dept.size&&skip!=='dept'){const s=rowStage(S.data,r);const dp=s?(s.d||((S.stages[stageIdx(s.s)]||{}).dept)||''):'';if(!f.dept.has(dp||'(Not set)'))return false}
   if(f.tp&&skip!=='tp'){if((f.tp==='sent')!==tpSent(r))return false}
   if(f.q){const hay=norm(r.c.join(' '));if(!norm(f.q).split(' ').filter(Boolean).every(t=>hay.indexOf(t)>=0))return false}
-  for(const k in f.cols){if(Number(k)===skip)continue;const s=f.cols[k];if(!s||!s.size)continue;if(!s.has(String(r.c[k]).trim()||'(Blank)'))return false}
+  for(const k in f.cols){if(Number(k)===skip)continue;const s=f.cols[k];if(!s||!s.size)continue;if(isMulti(S.data.columns[k])){const parts=splitVals(r.c[k]);if(!(parts.length?parts.some(x=>s.has(x)):s.has('(Blank)')))return false;continue}if(!s.has(String(r.c[k]).trim()||'(Blank)'))return false}
   return true}
 function tpRealCol(){return S.data.columns.findIndex(c=>/tech\s*-?\s*pack/i.test(c.name)&&!/date|by|link/i.test(c.name))}
 function tpOwner(){const o=S.data.columns.map(c=>c.owner||'').find(x=>/nath/i.test(x));return o||'NATHALIE'}
@@ -555,7 +555,10 @@ function outside(e){if(!e.target.closest('.pop'))closePop()}
 function place(pop,a){document.body.appendChild(pop);const r=a.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
   let x=Math.min(r.left,window.innerWidth-w-10),y=r.bottom+6;if(y+h>window.innerHeight-10)y=Math.max(10,r.top-h-6);
   pop.style.left=Math.max(10,x)+'px';pop.style.top=y+'px';setTimeout(()=>document.addEventListener('mousedown',outside,true),0)}
-function counts(k){const m={};dataRows().filter(r=>rowPasses(r,k)).forEach(r=>{const v=String(r.c[k]).trim()||'(Blank)';m[v]=(m[v]||0)+1});return m}
+function isMulti(col){return !!col&&(col.type==='select'||col.type==='text')&&/colou?r/i.test(String(col.name||''))&&!/total|variation|count|qty|number|#/i.test(String(col.name||''))}
+function splitVals(v){return String(v==null?'':v).split(/\n|,|[/]|،|\s[-–·&+]\s/).map(x=>x.trim()).filter(Boolean)}
+function joinSep(k){const vals=dataRows().map(r=>String(r.c[k]||''));if(vals.some(v=>v.indexOf('\n')>=0))return '\n';if(vals.some(v=>v.indexOf(',')>=0)&&!vals.some(v=>v.indexOf('/')>=0))return ', ';return ' / '}
+function counts(k){const m={},multi=isMulti(S.data.columns[k]);dataRows().filter(r=>rowPasses(r,k)).forEach(r=>{const parts=multi?splitVals(r.c[k]):[String(r.c[k]).trim()];if(!parts.length||!parts[0])parts.splice(0,parts.length,'(Blank)');[...new Set(parts)].forEach(v=>m[v]=(m[v]||0)+1)});return m}
 function openFilter(k,a){closePop();const col=S.data.columns[k],m=counts(k);
   const all=Array.from(new Set(Object.keys(m).concat(Array.from(S.f.cols[k]||[])))).sort((x,y)=>x.localeCompare(y,undefined,{numeric:true}));const sel=new Set(S.f.cols[k]||[]);
   const p=document.createElement('div');p.className='pop';
@@ -574,14 +577,15 @@ function openEditor(rowNum,k,anchor){closePop();const d=S.data,col=d.columns[k],
   const old=row.c[k],oldIso=row.d&&row.d[k],keyK=d.keyCode>=0?d.keyCode:d.keyName;
   const label=[d.keyCode>=0?row.c[d.keyCode]:'',d.keyName>=0?row.c[d.keyName]:''].filter(Boolean).join(' · ');
   const notOwner=col.owner&&!ownerMine(col.owner);const p=document.createElement('div');p.className='pop';let body;
-  if(col.type==='select')body=`<input class="inp" id="es" placeholder="Search or type a new value…"><div class="opts" id="eo"></div>`;
+  const multi=isMulti(col);
+  if(col.type==='select'||multi)body=`<input class="inp" id="es" placeholder="${multi?'Search or add a colour…':'Search or type a new value…'}"><div class="opts" id="eo"></div>${multi?'<div class="muted" style="margin-top:6px">Pick one or more — each colour is saved separately.</div>':''}`;
   else if(col.type==='date')body=`<input class="inp" type="date" id="ev" value="${esc(oldIso||'')}"><div class="muted" style="margin-top:6px">Current: ${esc(old||'—')}</div>`;
   else if(col.type==='number')body=`<input class="inp" type="number" step="any" id="ev" value="${esc(String(old).replace(/[^\d.\-]/g,''))}">`;
   else if(col.type==='checkbox')body=`<label class="chk"><input type="checkbox" id="ev" ${/true|yes|✓|1/i.test(old)?'checked':''}> Done</label>`;
   else body=`<textarea class="inp" id="ev" rows="4">${esc(old)}</textarea>`;
   p.innerHTML=`<div class="hd"><div class="t">${esc(col.name)}</div><div class="s">${esc(label||('Row '+rowNum))} · ${esc(S.tab)}</div>
     ${col.owner?`<div class="${notOwner?'warn':'s'}">${notOwner?`Owner: <b>${esc(col.owner)}</b> — you're editing as <b>${esc(S.user.name)}</b>; your name is logged.`:`Your field (owner: ${esc(col.owner)})`}</div>`:''}</div>
-    <div class="pb">${body}</div><div class="pf"><span class="muted" id="em" style="flex:1"></span><button class="btn sm ghost" id="ec">Cancel</button>${col.type!=='select'?'<button class="btn sm pri" id="eok">Save</button>':''}</div>`;
+    <div class="pb">${body}</div><div class="pf"><span class="muted" id="em" style="flex:1"></span><button class="btn sm ghost" id="ec">Cancel</button>${col.type==='select'||multi?'<button class="btn sm" id="eadd">+ Add value</button>':''}${col.type!=='select'||multi?'<button class="btn sm pri" id="eok">Save</button>':''}</div>`;
   place(p,anchor);
   const save=async(value,addOpt)=>{$('#em',p).innerHTML='<span class="spin"></span> Saving…';p.querySelectorAll('button,input,textarea').forEach(x=>x.disabled=true);
     try{const r=await call(addOpt?'addOption':'update',{cid:S.cid,tab:S.tab,row:rowNum,col:col.col,old,value,type:col.type,firstRow:d.firstRow,keyCol:keyK>=0?d.columns[keyK].col:null,keyVal:keyK>=0?row.c[keyK]:null});
@@ -591,12 +595,27 @@ function openEditor(rowNum,k,anchor){closePop();const d=S.data,col=d.columns[k],
       d.recent[rowNum+'|'+col.L]={u:r.by,t:r.t,o:r.old};closePop();renderBody();renderStats();if(S.cur===rowNum&&$('.page'))renderPage();toast('Saved to sheet ✓')}
     catch(e){$('#em',p).textContent=e.message;p.querySelectorAll('button,input,textarea').forEach(x=>x.disabled=false)}};
   $('#ec',p).onclick=closePop;
+  if(multi){const base=(col.options||[]).concat((S.opts[S.cid]||{})[norm(col.name)]||[]).concat(dataRows().map(r=>r.c[k]));
+    const opts=Array.from(new Set(base.flatMap(splitVals))).sort((a,b)=>a.localeCompare(b));const sel=splitVals(old);const known=new Set(opts.map(norm));
+    const list=()=>{const q=$('#es',p).value.trim(),nq=norm(q);let h='';
+      if(q&&!opts.some(o=>norm(o)===nq))h+=`<button class="opt optnew" data-add="${esc(q)}">+ Add “${esc(q)}”</button>`;
+      h+=opts.filter(o=>!nq||norm(o).indexOf(nq)>=0).map(o=>`<label class="chk"><input type="checkbox" value="${esc(o)}" ${sel.indexOf(o)>=0?'checked':''}><span style="flex:1">${esc(o)}</span></label>`).join('');
+      $('#eo',p).innerHTML=h||'<div class="muted" style="padding:6px">Type a colour and press Enter to add it.</div>';
+      $('#eo',p).querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{const v=i.value;const ix=sel.indexOf(v);if(i.checked&&ix<0)sel.push(v);if(!i.checked&&ix>=0)sel.splice(ix,1)});
+      $('#eo',p).querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addNew(b.dataset.add))};
+    const addNew=v=>{v=String(v||'').trim();if(!v)return;const ex=opts.find(o=>norm(o)===norm(v));if(ex)v=ex;else opts.unshift(v);if(sel.indexOf(v)<0)sel.push(v);$('#es',p).value='';list();$('#es',p).focus()};
+    list();$('#es',p).oninput=list;$('#es',p).focus();
+    $('#es',p).onkeydown=e=>{if(e.key==='Escape')closePop();if(e.key==='Enter'){e.preventDefault();const q=$('#es',p).value.trim();if(q){const m=opts.filter(o=>norm(o).indexOf(norm(q))>=0);if(m.length===1&&norm(m[0])!==norm(q)){if(sel.indexOf(m[0])<0)sel.push(m[0]);$('#es',p).value='';list()}else addNew(q)}else $('#eok',p).click()}};
+    $('#eadd',p).onclick=()=>{const q=$('#es',p).value.trim();if(q)addNew(q);else{$('#es',p).placeholder='Type the new colour, then press Enter';$('#es',p).focus()}};
+    $('#eok',p).onclick=()=>{const v=sel.join(joinSep(k));if(norm(v)===norm(old))return closePop();const fresh=sel.filter(x=>!known.has(norm(x)));
+      if(fresh.length&&!isAdmin()){closePop();return openRequest({type:'add_option',column:col.name,value:fresh.join(', '),row:rowNum,style:label})}save(v,false)};return}
   if(col.type==='select'){const opts=Array.from(new Set((col.options||[]).concat(col.validated?[]:((S.opts[S.cid]||{})[norm(col.name)]||[])))).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));const canNew=isAdmin()&&(!col.validated||col.list);
     const list=()=>{const q=$('#es',p).value.trim(),nq=norm(q);let h=opts.filter(o=>!nq||norm(o).indexOf(nq)>=0).map(o=>`<button class="opt ${o===old?'sel':''}" data-v="${esc(o)}"><span>${esc(o)}</span>${o===old?'<span class="cnt">current</span>':''}</button>`).join('');
-      if(q&&!opts.some(o=>norm(o)===nq))h+=canNew?`<button class="opt optnew" data-new="1" data-v="${esc(q)}">+ Add “${esc(q)}”</button>`:`<button class="opt optnew" data-req="1" data-v="${esc(q)}">✉ Request new option “${esc(q)}”</button>`;
+      if(q&&!opts.some(o=>norm(o)===nq))h=(canNew?`<button class="opt optnew" data-new="1" data-v="${esc(q)}">+ Add “${esc(q)}”</button>`:`<button class="opt optnew" data-req="1" data-v="${esc(q)}">✉ Request new option “${esc(q)}”</button>`)+h;
       if(old)h+=`<button class="opt" data-v="" style="color:#a33">Clear value</button>`;if(!h)h='<div class="muted" style="padding:6px">No options yet — type to add one.</div>';
       $('#eo',p).innerHTML=h;$('#eo',p).querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const v=b.dataset.v;if(b.dataset.req){closePop();return openRequest({type:'add_option',column:col.name,value:v,row:rowNum,style:label})}if(v===old)return closePop();save(v,!!(b.dataset.new&&col.validated))})};
-    list();$('#es',p).oninput=list;$('#es',p).focus();$('#es',p).onkeydown=e=>{if(e.key==='Escape')closePop();if(e.key==='Enter'){const b=$('#eo .opt',p);if(b)b.click()}}}
+    list();$('#es',p).oninput=list;$('#es',p).focus();$('#es',p).onkeydown=e=>{if(e.key==='Escape')closePop();if(e.key==='Enter'){const nb=$('#eo .optnew',p);const b=nb&&!opts.some(o=>norm(o).indexOf(norm($('#es',p).value))>=0)?nb:$('#eo .opt:not(.optnew)',p);if(b)b.click()}};
+    $('#eadd',p).onclick=()=>{const q=$('#es',p).value.trim();if(q){const nb=$('#eo .optnew',p);if(nb)return nb.click();toast('“'+q+'” is already in the list — pick it',true);return}$('#es',p).placeholder='Type the new value, then press Enter';$('#es',p).focus()}}
   else{const inp=$('#ev',p);inp.focus();const ok=()=>save(col.type==='checkbox'?inp.checked:inp.value);$('#eok',p).onclick=ok;
     inp.onkeydown=e=>{if(e.key==='Escape')closePop();if(e.key==='Enter'&&(col.type!=='text'||e.ctrlKey||e.metaKey)){e.preventDefault();ok()}}}}
 
