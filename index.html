@@ -679,11 +679,20 @@ function openStagePop(r,key,preset,anchor){closePop();const d=S.data;const cur=r
 
 const RQT={add_column:'Add column',remove_column:'Remove column',rename_column:'Rename column',add_option:'New dropdown option',new_product:'New product',delete_rows:'Delete product',other:'Other'};
 const FEED={t:null};
+const KV={db:null,open(){if(this.db)return this.db;this.db=new Promise(res=>{try{const r=indexedDB.open('cc_sw',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}});return this.db},
+  async get(k){const db=await this.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)}catch(e){res(null)}})},
+  async set(k,v){const db=await this.open();if(!db)return;return new Promise(res=>{try{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>res()}catch(e){res()}})}};
+function b64u(s){s=String(s).replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s);return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function pushSetup(force){try{if(!window.CC_API||!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)||Notification.permission!=='granted'||!isFull())return false;
+  const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();const cfg=await KV.get('cfg');
+  if(sub&&cfg&&cfg.endpoint===sub.endpoint&&cfg.uid===S.user.id&&!force){S.push=true;return true}
+  if(!sub){const k=(await call('pushKey')).key;sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(k)})}
+  const r=await call('pushSub',{endpoint:sub.endpoint});await KV.set('cfg',{api:window.CC_API,endpoint:sub.endpoint,key:r.key,uid:S.user.id});await KV.set('since',Date.now());S.push=true;return true}catch(e){console.warn('push',e);return false}}
 function appExtras(){const bA=$('#bAlerts'),bI=$('#bInstall');
   const upd=()=>{if(bA)bA.style.display=isFull()&&('Notification' in window)&&Notification.permission!=='granted'?'':'none';if(bI)bI.style.display=window.__bip&&!matchMedia('(display-mode: standalone)').matches?'':'none'};
-  if(bA)bA.onclick=async()=>{try{const p=await Notification.requestPermission();if(p==='granted'){toast('Alerts on ✓ — you will see every edit as a notification');deskNotify('CLOUD Collections','Alerts are on. You will see who edited what, and when.')}else toast('Alerts are blocked — allow notifications for this site in the browser settings',true)}catch(e){toast('This browser does not support alerts',true)}upd()};
+  if(bA)bA.onclick=async()=>{try{const p=await Notification.requestPermission();if(p==='granted'){const ok=await pushSetup(true);toast(ok?'Alerts on ✓ — you will get every edit even when the app is closed':'Alerts on ✓ — you will see every edit while the app is open');deskNotify('CLOUD Collections','Alerts are on. You will see who edited what, and when.')}else toast('Alerts are blocked — allow notifications for this site in the browser settings',true)}catch(e){toast('This browser does not support alerts',true)}upd()};
   if(bI)bI.onclick=async()=>{const e=window.__bip;if(!e)return;window.__bip=null;try{e.prompt();await e.userChoice}catch(x){}upd()};
-  window.__updExtras=upd;upd();if(isFull()&&!FEED.t){feedPoll();FEED.t=setInterval(feedPoll,30000)}}
+  window.__updExtras=upd;upd();pushSetup(false);if(isFull()&&!FEED.t){feedPoll();FEED.t=setInterval(feedPoll,30000)}}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__bip=e;if(window.__updExtras)window.__updExtras()});
 window.addEventListener('appinstalled',()=>{window.__bip=null;if(window.__updExtras)window.__updExtras();toast('Installed ✓ — open CLOUD Collections from your apps / Dock')});
 if('serviceWorker' in navigator&&window.CC_API){navigator.serviceWorker.register('sw.js').catch(()=>{})}
@@ -695,7 +704,7 @@ async function feedPoll(){if(!S.token||!S.user)return;let since=Number(LS.get('c
     const when=t=>new Date(t).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
     const one=x=>({title:`${x.user||'Sheet'} edited ${x.style||('row '+x.row)}`,body:`${x.column}: ${x.old?x.old+' → ':''}${x.nw||'(empty)'}\n${x.cname} / ${x.tab} · ${when(x.t)}`});
     const list=it.length>4?[{title:`${it.length} new edits — ${[...new Set(it.map(x=>x.user))].join(', ')}`,body:it.slice(0,4).map(x=>`${x.style||'row '+x.row}: ${x.column} → ${x.nw}`).join('\n')+`\n${when(it[0].t)}`}]:it.slice().reverse().map(one);
-    for(const n of list)await deskNotify(n.title,n.body);
+    if(!S.push)for(const n of list)await deskNotify(n.title,n.body);
     if(document.visibilityState==='visible')toast(list[list.length-1].title)}catch(e){}}
 async function pollNotifs(){if(!S.token)return;try{const n=await call('notifs');S.notif=n;const b=$('#bellN');if(b){b.textContent=n.count;b.style.display=n.count?'block':'none'}}catch(e){}}
 setInterval(()=>{if(S.token&&document.visibilityState==='visible')pollNotifs()},60000);
