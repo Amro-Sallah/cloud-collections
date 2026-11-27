@@ -368,13 +368,13 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const norm=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
 function toast(m,e){const t=document.createElement('div');t.className='toast'+(e?' e':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),e?5000:2600)}
 function fmtT(iso){if(!iso)return'';const d=new Date(iso);if(isNaN(d))return iso;return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
-const ROLE={viewer:'Own columns only',full:'Full access',admin:'Admin'};
-const isFull=()=>S.user&&S.user.role!=='viewer';
+const ROLE={viewer:'First 2 tabs',full:'Full access',admin:'Admin'};
+const isFull=()=>!!S.user;
 const isAdmin=()=>S.user&&S.user.role==='admin';
 function myTags(){return norm(S.user.owners||S.user.name).split(/[,\/&+]| and /).map(x=>x.trim()).filter(Boolean)}
 function ownerMine(o){if(!o||!S.user)return false;const T=myTags();return norm(o).split(/[\/,&+]| and /).map(x=>x.trim()).some(x=>x&&T.some(n=>x===n||n.indexOf(x)===0||x.indexOf(n)===0))}
 function ownerList(){const o={};(S.data?S.data.columns:[]).forEach(c=>String(c.owner||'').split(/[\/,&+]| and /).map(x=>x.trim()).filter(Boolean).forEach(x=>o[x.toUpperCase()]=1));return Object.keys(o).sort()}
-function canCol(c){return S.user&&(S.user.role==='admin'||(S.user.role==='full'&&(!c.owner||ownerMine(c.owner)))||(S.user.role==='viewer'&&!!c.owner&&ownerMine(c.owner)))}
+function canCol(c){return S.user&&(S.user.role==='admin'||(!c.owner||ownerMine(c.owner)))}
 const PAL=['#eef4ff:#1d3f8f','#e9f7ef:#1f6b3f','#fff4e0:#8a5a00','#fdecec:#9b2c2c','#f2ecff:#5b3a9b','#e8f7f7:#17676b','#f1efea:#444','#fff0f6:#9b2c64'];
 function tagStyle(v){let h=0;for(const ch of String(v))h=(h*31+ch.charCodeAt(0))>>>0;const[b,c]=PAL[h%PAL.length].split(':');return `background:${b};color:${c}`}
 function hiRes(u,sz){if(!u||u==='sheet')return u;sz=sz||1600;let x=String(u);
@@ -872,7 +872,7 @@ async function openAdmin(){closeAll();overlay();const m=document.createElement('
   async function users(){ab().innerHTML='<div class="loading"><span class="spin"></span></div>';let list;try{list=await call('users')}catch(e){ab().innerHTML=esc(e.message);return}
     const form=u=>`<div class="row" style="margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:12px"><input type="hidden" id="uid" value="${esc(u?u.id:'')}">
       <div class="field"><label>Name</label><input class="inp" id="un" value="${esc(u?u.name:'')}" placeholder="e.g. Sara"></div>
-      <div class="field"><label>Access</label><select class="inp" id="ur"><option value="viewer" ${u&&u.role==='viewer'?'selected':''}>Own columns only — first 2 tabs</option><option value="full" ${!u||u.role==='full'?'selected':''}>Full access</option><option value="admin" ${u&&u.role==='admin'?'selected':''}>Admin</option></select></div>
+      <div class="field"><label>Access</label><select class="inp" id="ur"><option value="viewer" ${u&&u.role==='viewer'?'selected':''}>First 2 tabs only (edits own columns + shared)</option><option value="full" ${!u||u.role==='full'?'selected':''}>Full access</option><option value="admin" ${u&&u.role==='admin'?'selected':''}>Admin</option></select></div>
       <div class="field"><label>${u?'New PIN (blank = keep)':'PIN'}</label><input class="inp" id="up" inputmode="numeric" maxlength="8" placeholder="4–8 digits"></div>
       <div class="field"><label>Edits columns of</label><input class="inp" id="uo" list="uol" value="${esc(u?u.owners||'':'')}" placeholder="e.g. TALA (blank = name)"><datalist id="uol">${ownerList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
       <div class="field"><label>Status</label><select class="inp" id="ua"><option value="1" ${!u||u.active?'selected':''}>Active</option><option value="0" ${u&&!u.active?'selected':''}>Disabled</option></select></div>
@@ -895,7 +895,7 @@ async function openAdmin(){closeAll();overlay();const m=document.createElement('
     $('#ti',m).onclick=async()=>{$('#tr',m).innerHTML='<span class="spin"></span>';try{const r=await call('installTracking');$('#tr',m).textContent=r.added.length?'Tracking added for: '+r.added.join(', '):'All collections are already tracked.'}catch(e){$('#tr',m).textContent=e.message}}}
   async function aiAdmin(){ab().innerHTML='<div class="loading"><span class="spin"></span></div>';let st;try{st=await call('aiSettings',{})}catch(e){ab().innerHTML=esc(e.message);return}
     const models=[['claude-sonnet-5-5','Claude Sonnet 5.5 — fast & smart (recommended)'],['claude-opus-5-5','Claude Opus 5.5 — strongest, 2× cost'],['claude-haiku-5-5','Claude Haiku 5.5 — cheapest, simple tasks']];
-    const tot=st.users.filter(u=>u.role!=='viewer').reduce((t,u)=>t+u.share,0);
+    const tot=st.users.reduce((t,u)=>t+u.share,0);
     ab().innerHTML=`<div class="box" style="margin-bottom:14px"><h3><span class="av" style="background:#d97757">C</span>Claude — main AI<span class="sp"></span><span class="sub">${st.hasClaude?'connected':'not connected'}</span></h3><div class="tp">
       <p class="muted" style="margin:0">Claude does all the thinking (chat, new products, edits, deletes). Uses the monthly API credit of your Claude Max plan: link it on claude.ai → Settings → Billing → API credits, create a key on platform.claude.com, paste it here.</p>
       <div class="row"><div class="field" style="flex:1;min-width:240px"><label>Claude API key ${st.hasClaude?'(set ✓ — paste to replace)':''}</label><input class="inp" type="password" id="ck" autocomplete="off"></div>
