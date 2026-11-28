@@ -53,8 +53,8 @@ a{color:inherit}
 .seg button{border:0;background:transparent;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:500;color:var(--mut)}
 .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .spacer{flex:1}
-.stats{display:flex;gap:22px;padding:16px 20px 6px;color:var(--mut);font-size:12px;align-items:baseline;flex-wrap:wrap}
-.stats b{color:var(--ink);font-size:20px;font-weight:700;margin-right:4px}
+.stats{display:flex;gap:14px;margin-left:auto;color:var(--mut);font-size:12px;align-items:baseline;flex-wrap:wrap;padding:0 4px}
+.stats b{color:var(--ink);font-size:14px;font-weight:700}
 .wrap{padding:8px 20px 40px}
 .secttl{grid-column:1/-1;font-weight:700;font-size:14px;margin:18px 0 2px;display:flex;align-items:center;gap:10px}
 .secttl:after{content:"";flex:1;height:1px;background:var(--line)}
@@ -190,6 +190,8 @@ body.busy::before{content:'';position:fixed;top:0;left:0;height:3px;width:40%;ba
 table.ani{width:100%;border-collapse:collapse;font-size:12px}table.ani th,table.ani td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--soft);background:transparent!important;position:static!important}table.ani tr.ango{cursor:pointer}table.ani tr.ango:hover td{background:#fff!important}
 .ansum{margin-top:14px;display:grid;gap:6px;font-size:13px}
 @media(max-width:820px){.anl{width:110px}}
+.hero.canph{cursor:pointer;position:relative}.hero .phbtn{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px;opacity:0;transition:opacity .15s}.hero.canph:hover .phbtn,.hero.canph .phbtn.on{opacity:1}.hero .phbtn{cursor:pointer}.hero.uploading{opacity:.6}.hero.uploading .phbtn{opacity:1}
+@media(max-width:820px){.hero .phbtn{opacity:1}}
 .bell{position:relative;background:transparent;border:1px solid #3a3a3a;color:#fff;border-radius:9px;padding:5px 9px}
 .tdchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.tdchips .chip b{margin-left:4px}.tdg{margin-bottom:14px}.tdh{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:6px;align-items:center}.tdh span{background:#f1efea;border-radius:999px;padding:0 7px;font-size:11px}.tdh.late{color:#b42318}.tdh.act{color:#b45309}.tdh.wait{color:#1d3f8f}.tdh.todo{color:#555}
 .tdi{padding:9px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff}.tdi:hover{background:#fafaf8}.tdt{font-weight:600;font-size:13.5px}.tds{font-size:12px;color:#6b675f;margin-top:2px}
@@ -230,7 +232,7 @@ table.ani{width:100%;border-collapse:collapse;font-size:12px}table.ani th,table.
  .stabs{position:static;padding:0 8px}
  .bar{position:static;padding:10px 12px}
  .search{flex:1 1 100%}
- .stats{padding:12px 12px 4px;gap:14px}.stats b{font-size:16px}
+ .stats{margin-left:0;width:100%;gap:12px}.stats b{font-size:13px}
  .wrap{padding:8px 12px 30px}
  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
  .cb{padding:10px}.cn{font-size:13px}
@@ -601,6 +603,11 @@ async function openAnalysis(){closeAll();overlay();const m=document.createElemen
   $('#anb',m).innerHTML=h;
   m.querySelectorAll('.anr').forEach(tr=>tr.onclick=()=>{const x=$('#and'+tr.dataset.i,m);x.style.display=x.style.display==='none'?'':'none'});
   m.querySelectorAll('.ango').forEach(tr=>tr.onclick=()=>gotoItem(S.cid,tr.dataset.t,Number(tr.dataset.r)))}
+function photoBind(pg,r){const h=$('#hero',pg),inp=$('#phin',pg);if(!h||!inp)return;const pb=$('.phbtn',h);if(pb)pb.onclick=e=>{e.stopPropagation();inp.click()};if(!h.querySelector('img'))h.onclick=()=>inp.click();inp.onclick=e=>e.stopPropagation();
+  inp.onchange=async()=>{const f=inp.files[0];if(!f)return;const d=S.data;const prev=r.img;const url=URL.createObjectURL(f);h.classList.add('uploading');const im=h.querySelector('img');if(im){im.removeAttribute('data-px');im.src=url}else h.insertAdjacentHTML('afterbegin',`<img src="${url}" alt="">`);
+    try{const x=await shrink(f,1400);if(!x)throw new Error('Could not read the image');const res=await call('setPhoto',{cid:S.cid,tab:S.tab,row:r.r,image:x});r.img=Object.assign({},r.img||{},{[res.k]:res.img});
+      if(r.gk&&d.groups&&d.groups[r.gk])d.groups[r.gk].forEach(y=>{if(y.r===r.r)y.img=r.img});h.classList.remove('uploading');renderBody();toast('Photo updated in the sheet ✓')}
+    catch(e){r.img=prev;h.classList.remove('uploading');renderPage();toast('Photo not saved — '+e.message,true)}}}
 async function gotoItem(cid,tab,r){closeAll();LS.set('cc_tab_'+cid,tab);if(S.cid!==cid)selectCollection(cid);else if(S.tab!==tab)selectTab(tab);
   for(let i=0;i<60;i++){if(S.cid===cid&&S.tab===tab&&S.data&&S.data.cid===cid&&S.data.rows.some(x=>x.r===r))return openPage(r);await new Promise(z=>setTimeout(z,300))}toast('Could not open the item',true)}
 function stageIdx(n){return (S.stages||[]).findIndex(x=>x.name===n)}
@@ -635,8 +642,8 @@ function renderMain(keep){const d=S.data,main=$('#main');document.body.classList
     <span class="spacer"></span>
     <div class="seg"><button data-v="cards" class="${S.view==='cards'?'on':''}">Cards</button><button data-v="table" class="${S.view==='table'?'on':''}">Table</button></div>
     ${isFull()&&S.view==='table'?`<button class="chip ${S.f.mine?'on':''}" id="mine" title="Show only the columns you own">My columns</button>`:''}
-    ${isFull()?'<button class="btn sm pri" id="aiNew">✨ AI assistant</button>':''}<button class="btn sm" id="anBtn">📊 Analysis</button><button class="btn sm" id="expV">Export view</button><button class="btn sm" id="expA">Export collection</button><button class="btn sm" id="rel" title="Re-read the sheet, confirm your edits reached it, refresh photos">⇅ Sync</button></div>
-    <div class="stats" id="stats"></div><div class="stageBar" id="stageBar"></div><div class="wrap" id="body"></div>`;
+    ${isFull()?'<button class="btn sm pri" id="aiNew">✨ AI assistant</button>':''}<button class="btn sm" id="anBtn">📊 Analysis</button><button class="btn sm" id="expV">Export view</button><button class="btn sm" id="expA">Export collection</button><button class="btn sm" id="rel" title="Re-read the sheet, confirm your edits reached it, refresh photos">⇅ Sync</button><span class="stats" id="stats"></span></div>
+    <div class="stageBar" id="stageBar" style="display:none"></div><div class="wrap" id="body"></div>`;
   const qi=$('#q');let tm;qi.oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>{S.f.q=qi.value;renderBody();renderStats()},180)};
   main.querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openFilter(Number(b.dataset.fk),b));
   $('#addF').onclick=e=>openColumnPicker(e.currentTarget);$('#fDept').onclick=e=>openDeptFilter(e.currentTarget);
@@ -650,10 +657,10 @@ function renderMain(keep){const d=S.data,main=$('#main');document.body.classList
 function renderStats(){const d=S.data,rows=filtered().filter(r=>r.c);
   const styles=new Set(rows.map(r=>norm(rowKey(d,r))).filter(Boolean)).size;
   const qty=d.K.qty>=0?rows.reduce((s,r)=>s+(parseFloat(String(r.c[d.K.qty]).replace(/,/g,''))||0),0):null;
-  const tps=rows.filter(r=>rowTP(d,r)).length;
-  $('#stats').innerHTML=`<span><b>${styles}</b>styles</span><span><b>${rows.length}</b>items</span>${qty!==null?`<span><b>${qty.toLocaleString()}</b>units</span>`:''}<span><b>${tps}</b>tech packs</span><span class="spacer"></span><span>Synced ${fmtT(d.loadedAt)}${d.canEdit?'':' · Read only'}</span>`}
+  const seen=new Set();let cols=0;rows.forEach(r=>{const k=r.gk||norm(rowKey(d,r));if(!k||seen.has(k))return;seen.add(k);cols+=smColors(d,r).filter(Boolean).length||1});
+  $('#stats').innerHTML=`<span><b>${styles}</b> styles</span><span><b>${cols}</b> colours</span>${qty!==null?`<span><b>${qty.toLocaleString()}</b> units</span>`:''}<span class="muted">Synced ${fmtT(d.loadedAt)}</span>`}
 function renderBody(){if(S.view==='table')renderTable();else renderCards();renderStageBar()}
-function renderStageBar(){const el=$('#stageBar');if(!el)return;const d=S.data;const rows=S.data.rows.filter(r=>r.c&&rowPasses(r,'stage'));const cnt={};rows.forEach(r=>{const s=rowStage(d,r);const n=s?s.s:'(Not set)';cnt[n]=(cnt[n]||0)+1});
+function renderStageBar(){const el=$('#stageBar');if(!el||el.style.display==='none')return;const d=S.data;const rows=S.data.rows.filter(r=>r.c&&rowPasses(r,'stage'));const cnt={};rows.forEach(r=>{const s=rowStage(d,r);const n=s?s.s:'(Not set)';cnt[n]=(cnt[n]||0)+1});
   const list=[{name:'(Not set)'}].concat(S.stages||[]);el.innerHTML=list.filter(s=>cnt[s.name]).map(s=>`<button class="sc ${S.f.stage===s.name?'on':''}" data-s="${esc(s.name)}"><b>${cnt[s.name]}</b>${esc(s.name)}</button>`).join('');
   el.querySelectorAll('.sc').forEach(b=>b.onclick=()=>{S.f.stage=S.f.stage===b.dataset.s?null:b.dataset.s;renderBody();renderStats()})}
 function openDeptFilter(a){closePop();const depts=Array.from(new Set((S.stages||[]).map(s=>s.dept).filter(Boolean))).concat(['(Not set)']);const sel=new Set(S.f.dept||[]);const p=document.createElement('div');p.className='pop';
@@ -783,7 +790,7 @@ function fieldHtml(d,r,c,k){const isF=r.f&&r.f.indexOf(k)>=0,ed=d.canEdit&&canCo
   const val=!v?'<span class="vv empty">—</span>':(c.type==='select'?`<div class="vv">${tagHtml(v)}</div>`:(v.length>140||v.split('\n').length>4?`<div class="vv clamp">${esc(v)}</div><button class="more" data-more>View more</button>`:`<div class="vv">${esc(v)}</div>`));
   return `<div class="f ${ed?'ed':''} ${isF||c.computed?'ro':''} ${chg?'chg':''}" data-k="${k}" title="${chg?esc('Edited by '+chg.u+' · '+fmtT(chg.t)+(chg.o?' · was: '+chg.o:'')):''}"><div class="k">${esc(c.name)}</div>${v?val:'<div class="vv empty">—</div>'}</div>`}
 function renderPage(){const d=S.data,r=d.rows.find(x=>x.r===S.cur),pg=$('.page');if(!r||!pg)return;const K=d.K,v=k=>k>=0?String(r.c[k]).trim():'';
-  const imgs=r.img?Object.keys(r.img).map(k=>r.img[k]).filter(u=>u&&u!=='sheet'):[];const main=imgs[0];
+  const imgs=r.img?Object.keys(r.img).map(k=>r.img[k]).filter(u=>u&&u!=='sheet'):[];const main=imgs[0];const icol=d.K.img>=0?d.columns[d.K.img]:null;const canPh=!!(icol&&canCol(icol));
   const title=v(K.name)||v(K.code)||('Row '+r.r);
   const groups={};d.columns.forEach((c,k)=>{if(c.type==='image')return;const g=c.owner||'General';(groups[g]=groups[g]||[]).push(k)});
   const order=['General'].concat(Object.keys(groups).filter(g=>g!=='General')).filter(g=>groups[g]);
@@ -792,7 +799,7 @@ function renderPage(){const d=S.data,r=d.rows.find(x=>x.r===S.cur),pg=$('.page')
   pg.innerHTML=`<div class="phd"><button class="btn sm ghost" id="pc">✕</button><div class="t">${esc(title)}<small>${esc([v(K.code),v(K.category),S.tab].filter(Boolean).join(' · '))}</small></div>
     ${v(K.status)?`<span class="pill dark">${esc(v(K.status))}</span>`:''}<button class="btn sm" id="pp">‹</button><button class="btn sm" id="pn">›</button>${isFull()?'<button class="btn sm" id="px">Export item</button>':''}</div>
    <div class="pgrid"><div class="gal">
-     <div class="hero" id="hero">${main?`<img class="px" data-px="${esc(main)}" alt="">`:'<div class="muted" style="letter-spacing:.1em">NO PHOTO</div>'}</div>
+     <div class="hero ${canPh?'canph':''}" id="hero" ${canPh?'title="Click to upload a new photo"':''}>${main?`<img class="px" data-px="${esc(main)}" alt="">`:'<div class="muted" style="letter-spacing:.1em">NO PHOTO</div>'}${canPh?'<span class="phbtn'+(main?'':' on')+'">📷 '+(main?'Change photo':'Upload photo')+'</span><input type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/gif" id="phin" hidden>':''}</div>
      ${imgs.length>1?`<div class="thumbs">${imgs.map((u,i)=>`<img class="px" data-px="${esc(u)}" data-u="${esc(u)}" class="${i?'':'on'}">`).join('')}</div>`:''}
      <div class="box"><h3>Tech pack <span class="sub">${tps.length?tps.length+' version'+(tps.length>1?'s':''):'none yet'}</span></h3><div class="tp">
        ${tps.slice(0,5).map((t,i)=>`<div class="tpfile"><div class="ic">PDF</div><div style="flex:1;min-width:0"><div class="nm">${esc(t.label||(i?'Previous version':'Latest'))}</div><div class="muted">${esc(t.user)} · ${fmtT(t.t)} · ${Math.max(1,Math.round(t.size/1024))} KB</div></div><button class="btn sm" data-tp="${esc(t.id)}">Open</button></div>`).join('')}
@@ -817,7 +824,7 @@ function renderPage(){const d=S.data,r=d.rows.find(x=>x.r===S.cur),pg=$('.page')
   if($('#px',pg))$('#px',pg).onclick=()=>exportItem(r);
   if($('#aigo',pg)){const fi=$('#aif',pg);fi.onchange=()=>{$('#aim',pg).textContent=fi.files.length?fi.files.length+' photo(s)':''};$('#aigo',pg).onclick=()=>aiEdit(r,pg)}
   pxScan();
-  pg.querySelectorAll('.step.ed').forEach(s=>s.onclick=()=>openStagePop(r,key,s.dataset.s,s));if($('#stgSel',pg))$('#stgSel',pg).onclick=e=>openStagePop(r,key,null,e.currentTarget);sampleBind(pg,r,key);
+  pg.querySelectorAll('.step.ed').forEach(s=>s.onclick=()=>openStagePop(r,key,s.dataset.s,s));if($('#stgSel',pg))$('#stgSel',pg).onclick=e=>openStagePop(r,key,null,e.currentTarget);sampleBind(pg,r,key);photoBind(pg,r);
   if(S.crossFor===S.cur&&S.crossData)drawCross()}
 async function loadCross(){const d=S.data,r=d.rows.find(x=>x.r===S.cur);if(!r)return;S.crossData=null;S.crossFor=S.cur;
   const keys=[d.K.code>=0?r.c[d.K.code]:'',d.K.name>=0?r.c[d.K.name]:''].filter(Boolean);const el=$('#cross');if(!el)return;
