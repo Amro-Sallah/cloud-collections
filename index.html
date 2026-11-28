@@ -347,6 +347,8 @@ body.aion .aifab{display:none}
 .card .cb{padding:14px 16px 14px;gap:5px}.card .cn{font-size:14.5px;font-weight:600;color:#1a1a1a}.card .cc{font-size:11.5px;color:#8a867d;letter-spacing:0}
 .cst{display:flex;align-items:center;gap:6px;font-size:12px;color:#3d3a35;margin-top:4px;min-width:0}.sdot{width:7px;height:7px;border-radius:50%;background:#7c7768;flex:none}.stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pill.dept{background:#eef4ff;color:#1d3f8f}
+.fb.smn{background:#f1efea;color:#8a877f}.fb.smh{background:#fff4e5;color:#b45309}.fb.smr{background:#e8f7ee;color:#15803d}.fb.smd{background:#fde8e8;color:#b42318}
+.smline{padding:4px 0;color:#8a877f}.smline.ok{color:#222}.smline .ic{display:inline-block;width:16px;font-style:normal;font-weight:700}.smbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .tpx{margin-left:auto;flex:none;font-size:10px;font-weight:700;color:#b42318;border:1px solid #f3c4bf;border-radius:4px;padding:0 5px;line-height:16px}
 .cline{font-size:12px;color:#8a867d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .fbs{margin:6px 0 0}.card .fb{font-size:10.5px;font-weight:600;padding:2px 8px}
@@ -457,13 +459,40 @@ function prep(d){
     factory:findCol(d,/factory/i),fob:findCol(d,/fob|\bcm\b/i),color:findCol(d,/^colou?r$/i),qty:findCol(d,/^(qty|quantity|total qty)$/i),
     season:findCol(d,/season|drop/i),date:findCol(d,/final date|arrival|drop date/i),desc:findCol(d,/descrip/i),task:findCol(d,/current task|po status/i)};
   if(d.K.category<0)d.K.category=findCol(d,/category/i);
-  d.tp=d.techpacks||{};d.sg=d.stages||{};if(d.stageList)S.stages=d.stageList;
+  d.tp=d.techpacks||{};d.sg=d.stages||{};d.sm=d.samples||{};if(d.stageList)S.stages=d.stageList;
   const kf=r=>norm(String((d.K.code>=0?r.c[d.K.code]:'')||'').trim())||norm(String((d.K.name>=0?r.c[d.K.name]:'')||'').trim());
   const hasImg=r=>r.img&&Object.keys(r.img).some(k=>r.img[k]&&r.img[k]!=='sheet');let last=null;const imgBy={};
   d.rows.forEach(r=>{if(!r.c){last=null;return}let k=kf(r);if(!k&&last)k=last;r.gk=k;last=k||last;if(k&&hasImg(r)&&!imgBy[k])imgBy[k]=r.img});
   d.rows.forEach(r=>{if(r.c&&r.gk&&!hasImg(r)&&imgBy[r.gk]){r.img=Object.assign({},imgBy[r.gk]);r.imgInh=true}});
   d.groups={};d.rows.forEach(r=>{if(r.c&&r.gk)(d.groups[r.gk]=d.groups[r.gk]||[]).push(r)})}
 function rowStage(d,r){const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return d.sg[a]||d.sg[b]||(r.gk&&d.sg[r.gk])||null}
+function rowSample(d,r){const m=d.sm||{};const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return m[a]||m[b]||(r.gk&&m[r.gk])||null}
+function smBadge(d,r){const s=rowSample(d,r);if(!s)return '<span class="fb smn" title="No shoot sample handed over yet">📸 No shoot sample</span>';
+  if(s.s==='received')return `<span class="fb smr" title="Received by ${esc(s.rb)} ${esc(fmtT(s.rt))}">📸 Sample received ✓</span>`;
+  if(s.s==='disputed')return `<span class="fb smd" title="${esc(s.rb)}: ${esc(s.n)}">📸 Sample NOT received ⚠</span>`;
+  return `<span class="fb smh" title="Handed by ${esc(s.hb)} ${esc(fmtT(s.ht))}">📸 Sample sent · awaiting receipt</span>`}
+function sampleHtml(d,r,key){const s=rowSample(d,r);const me=S.user&&S.user.name;const ad=S.user&&S.user.role==='admin';
+  const mine=s&&norm(s.hb)===norm(me);const canRecv=s&&s.s!=='received'&&(!mine||ad);
+  let st,steps;
+  if(!s){st='<span class="sub">no shoot sample yet</span>'}
+  else if(s.s==='received'){st=`<span class="sub" style="color:var(--ok)">✓ received by ${esc(s.rb)} ${fmtT(s.rt)}</span>`}
+  else if(s.s==='disputed'){st=`<span class="sub" style="color:#b42318">⚠ ${esc(s.rb)} says NOT received</span>`}
+  else st=`<span class="sub" style="color:#b45309">waiting for ${esc(s.to||'Creative')} to confirm</span>`;
+  const line=(ok,t)=>`<div class="smline ${ok?'ok':''}"><i class="ic">${ok?'✓':'○'}</i> ${t}</div>`;
+  steps=line(!!s,s?`Handed over by <b>${esc(s.hb)}</b>${s.to?` to <b>${esc(s.to)}</b>`:''} · ${fmtT(s.ht)}`:'Production hands the shoot sample to Creative')+
+    line(s&&s.s==='received',s&&s.s==='received'?`Received by <b>${esc(s.rb)}</b> · ${fmtT(s.rt)}`:s&&s.s==='disputed'?`<span style="color:#b42318">${esc(s.rb)}: not received — ${esc(s.n)} · ${fmtT(s.rt)}</span>`:'Creative confirms they received it');
+  const btn=key?`${(!s||s.s!=='received'||ad)?`<button class="btn sm" id="smHand">${s?'📦 Hand over again':'📦 Hand over to Creative'}</button>`:''}${canRecv?`<button class="btn sm pri" id="smRecv">✓ I received it</button><button class="btn sm ghost" id="smDeny">✕ Not received</button>`:''}${s&&ad?`<button class="btn sm ghost" id="smReset" title="Clear the record">Reset</button>`:''}`:'';
+  return `<div class="box"><h3><span class="av" style="background:#7c3aed">📸</span>Shoot sample<span class="sp"></span>${st}</h3><div class="tp">${steps}${s&&s.n&&s.s!=='disputed'?`<div class="muted" style="margin-top:4px">Note: ${esc(s.n)}</div>`:''}<div class="smbtns">${btn}</div></div></div>`}
+async function sampleAct(r,key,act,extra){const d=S.data;try{const res=await call('setSample',Object.assign({cid:S.cid,tab:S.tab,row:r.r,key,act},extra||{}));const k=norm(key);d.sm=d.sm||{};if(res)d.sm[k]=res;else delete d.sm[k];renderBody();renderPage();toast(act==='hand'?'Handed over — Creative will get a notification ✓':act==='receive'?'Receipt confirmed ✓':act==='deny'?'Marked as not received':'Reset ✓')}catch(e){toast(e.message,true)}}
+function sampleBind(pg,r,key){const g=x=>$(x,pg);
+  if(g('#smHand'))g('#smHand').onclick=e=>{closePop();const p=document.createElement('div');p.className='pop';S.editing=true;
+    p.innerHTML=`<div class="hd"><div class="t">Hand over shoot sample</div><div class="s">${esc(key)}</div></div><div class="pb"><div class="field" style="margin-top:0"><label>Handed to</label><input class="inp" id="smto" placeholder="e.g. Sara (Creative)" value="Creative"></div><div class="field"><label>Note (optional)</label><input class="inp" id="smn" placeholder="e.g. size M, black"></div></div><div class="pf"><span style="flex:1"></span><button class="btn sm ghost" id="smx">Cancel</button><button class="btn sm pri" id="smok">Hand over</button></div>`;
+    place(p,e.currentTarget);$('#smx',p).onclick=closePop;$('#smok',p).onclick=async()=>{const to=$('#smto',p).value,note=$('#smn',p).value;closePop();await sampleAct(r,key,'hand',{to,note})}};
+  if(g('#smRecv'))g('#smRecv').onclick=()=>sampleAct(r,key,'receive');
+  if(g('#smDeny'))g('#smDeny').onclick=()=>{closePop();const p=document.createElement('div');p.className='pop';S.editing=true;
+    p.innerHTML=`<div class="hd"><div class="t">Not received</div><div class="s">${esc(key)}</div></div><div class="pb"><div class="field" style="margin-top:0"><label>What happened?</label><input class="inp" id="smdn" placeholder="e.g. nothing arrived yet"></div></div><div class="pf"><span style="flex:1"></span><button class="btn sm ghost" id="smx">Cancel</button><button class="btn sm pri" id="smok">Send</button></div>`;
+    place(p,g('#smDeny'));$('#smx',p).onclick=closePop;$('#smok',p).onclick=async()=>{const note=$('#smdn',p).value||'Not received';closePop();await sampleAct(r,key,'deny',{note})}};
+  if(g('#smReset'))g('#smReset').onclick=()=>sampleAct(r,key,'reset')}
 function stageIdx(n){return (S.stages||[]).findIndex(x=>x.name===n)}
 function rowKey(d,r){return(d.K.code>=0&&String(r.c[d.K.code]).trim())||(d.K.name>=0&&String(r.c[d.K.name]).trim())||''}
 function rowTP(d,r){const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return d.tp[a]||d.tp[b]||(r.gk&&d.tp[r.gk])||(()=>{const g=r.gk&&d.groups&&d.groups[r.gk];if(!g)return null;for(const x of g){const t=d.tp[d.K.code>=0?norm(x.c[d.K.code]):'']||d.tp[d.K.name>=0?norm(x.c[d.K.name]):''];if(t)return t}return null})()}
@@ -544,7 +573,7 @@ ${(()=>{const s=rowStage(d,r);const dp=s?(s.d||((S.stages[stageIdx(s.s)]||{}).de
       <div class="cb"><div class="cn">${rowRecent(d,r)?'<span class="chgdot" title="Edited in the last 7 days"></span>':''}${esc(name)}</div><div class="cc">${esc(v(K.code))}${v(K.season)?' · '+esc(v(K.season)):''}${grp.length>1?` · ${grp.length} sizes/colours`:''}</div>
       ${tp?`<div class="cst"><span class="tpx" style="margin-left:0">PDF tech pack</span></div>`:''}
       ${(()=>{const L=[v(K.category),v(K.ptype),v(K.fabric),v(K.fob)].filter(Boolean);return L.length?`<div class="cline" title="${esc(L.join(' · '))}">${esc(L.join(' · '))}</div>`:''})()}
-      ${fi?`<div class="fbs">${fi.h}</div>`:''}${(()=>{const s=rowStage(d,r);const n=(S.stages||[]).length||1;const i=s?stageIdx(s.s):-1;return `<div class="stg"><span>${s?'<b>'+esc(s.s)+'</b>':'Stage not set'}</span><span>${s?esc(s.d||''):''}</span></div><div class="prog"><i style="width:${i>=0?Math.round((i+1)/n*100):0}%"></i></div>`})()}<div class="cf"><span>${v(K.factory)?'🏭 '+esc(v(K.factory)):(colors.length?esc(colors.slice(0,3).join(' · ')):'')}</span><span>${K.qty>=0&&(grp.length>1?gq:v(K.qty))?'<b>'+esc(grp.length>1?gq.toLocaleString():v(K.qty))+'</b> pcs':''}</span></div></div></div>`}
+      <div class="fbs">${fi?fi.h:''}${smBadge(d,r)}</div>${(()=>{const s=rowStage(d,r);const n=(S.stages||[]).length||1;const i=s?stageIdx(s.s):-1;return `<div class="stg"><span>${s?'<b>'+esc(s.s)+'</b>':'Stage not set'}</span><span>${s?esc(s.d||''):''}</span></div><div class="prog"><i style="width:${i>=0?Math.round((i+1)/n*100):0}%"></i></div>`})()}<div class="cf"><span>${v(K.factory)?'🏭 '+esc(v(K.factory)):(colors.length?esc(colors.slice(0,3).join(' · ')):'')}</span><span>${K.qty>=0&&(grp.length>1?gq:v(K.qty))?'<b>'+esc(grp.length>1?gq.toLocaleString():v(K.qty))+'</b> pcs':''}</span></div></div></div>`}
   h+='</div>';if(!n)h='<div class="loading">No items match.</div>';
   const b=$('#body');b.innerHTML=h;pxScan();b.onclick=e=>{const c=e.target.closest('.card');if(c)openPage(Number(c.dataset.r))}}
 function visibleCols(){const cols=S.data.columns.map((c,k)=>({...c,k}));if(!S.f.mine)return cols;
@@ -660,7 +689,7 @@ function renderPage(){const d=S.data,r=d.rows.find(x=>x.r===S.cur),pg=$('.page')
        ${isFull()&&key?`<label class="drop" id="drop"><input type="file" id="tpf" accept="application/pdf,image/&#42;" multiple hidden><b>${tps.length?'Upload new version':'Upload tech pack'}</b><br><span class="muted">PDF, or photos (combined into one PDF) · drop here or click</span></label>
        <input class="inp" id="tpl" placeholder="Note (optional) — e.g. v2 after fitting">`:''}
        ${!key?'<div class="muted">Add a style code or name first to attach a tech pack.</div>':''}</div></div></div>
-     <div>${journeyHtml(d,r,key)}${variantsHtml(d,r)}${[...mineFirst,...rest].map(g=>`<div class="box"><h3>${g==='General'?'<span class="av" style="background:#8a877f">i</span>':`<span class="av">${esc(g.slice(0,1).toUpperCase())}</span>`}${esc(g==='General'?'Product':g)}${ownerMine(g)?'<span class="sub">· your fields</span>':(S.user.role==='full'&&g!=='General'?'<span class="sub">· view only</span>':'')}<span class="sp"></span><span class="sub">${groups[g].length} fields</span></h3>
+     <div>${journeyHtml(d,r,key)}${sampleHtml(d,r,key)}${variantsHtml(d,r)}${[...mineFirst,...rest].map(g=>`<div class="box"><h3>${g==='General'?'<span class="av" style="background:#8a877f">i</span>':`<span class="av">${esc(g.slice(0,1).toUpperCase())}</span>`}${esc(g==='General'?'Product':g)}${ownerMine(g)?'<span class="sub">· your fields</span>':(S.user.role==='full'&&g!=='General'?'<span class="sub">· view only</span>':'')}<span class="sp"></span><span class="sub">${groups[g].length} fields</span></h3>
        <div class="kv">${groups[g].map(k=>fieldHtml(d,r,d.columns[k],k)).join('')}</div></div>`).join('')}
        ${isFull()?`<div class="box"><h3><span class="av" style="background:linear-gradient(135deg,#7c3aed,#2563eb)">✨</span>Edit with AI<span class="sp"></span><span class="sub">Arabic or English</span></h3><div class="tp"><textarea class="inp" id="aiq" rows="2" placeholder="e.g. Change the fabric to Modal and the status to In production — or: fill the description from the photo"></textarea><div class="row" style="align-items:center"><label class="btn sm" style="cursor:pointer">📷 Add photo<input type="file" id="aif" accept="image/&#42;" multiple hidden></label><label class="chk muted"><input type="checkbox" id="aip"> Also set as product photo</label><span class="spacer"></span><span class="muted" id="aim"></span><button class="btn sm pri" id="aigo">Apply</button></div></div></div>`:''}
        <div id="cross"></div></div></div>`;
@@ -678,7 +707,7 @@ function renderPage(){const d=S.data,r=d.rows.find(x=>x.r===S.cur),pg=$('.page')
   if($('#px',pg))$('#px',pg).onclick=()=>exportItem(r);
   if($('#aigo',pg)){const fi=$('#aif',pg);fi.onchange=()=>{$('#aim',pg).textContent=fi.files.length?fi.files.length+' photo(s)':''};$('#aigo',pg).onclick=()=>aiEdit(r,pg)}
   pxScan();
-  pg.querySelectorAll('.step.ed').forEach(s=>s.onclick=()=>openStagePop(r,key,s.dataset.s,s));if($('#stgSel',pg))$('#stgSel',pg).onclick=e=>openStagePop(r,key,null,e.currentTarget);
+  pg.querySelectorAll('.step.ed').forEach(s=>s.onclick=()=>openStagePop(r,key,s.dataset.s,s));if($('#stgSel',pg))$('#stgSel',pg).onclick=e=>openStagePop(r,key,null,e.currentTarget);sampleBind(pg,r,key);
   if(S.crossFor===S.cur&&S.crossData)drawCross()}
 async function loadCross(){const d=S.data,r=d.rows.find(x=>x.r===S.cur);if(!r)return;S.crossData=null;S.crossFor=S.cur;
   const keys=[d.K.code>=0?r.c[d.K.code]:'',d.K.name>=0?r.c[d.K.name]:''].filter(Boolean);const el=$('#cross');if(!el)return;
