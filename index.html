@@ -182,6 +182,9 @@ html,body{overflow-x:hidden;max-width:100%}
 .top{min-width:0}
 .ctabs{min-width:0;scrollbar-width:none}.ctabs::-webkit-scrollbar{display:none}
 .bell{position:relative;background:transparent;border:1px solid #3a3a3a;color:#fff;border-radius:9px;padding:5px 9px}
+.tdchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.tdchips .chip b{margin-left:4px}.tdg{margin-bottom:14px}.tdh{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:6px;align-items:center}.tdh span{background:#f1efea;border-radius:999px;padding:0 7px;font-size:11px}.tdh.late{color:#b42318}.tdh.act{color:#b45309}.tdh.wait{color:#1d3f8f}.tdh.todo{color:#555}
+.tdi{padding:9px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff}.tdi:hover{background:#fafaf8}.tdt{font-weight:600;font-size:13.5px}.tds{font-size:12px;color:#6b675f;margin-top:2px}
+#todoB{margin-left:6px}
 .bell b{position:absolute;top:-6px;right:-6px;background:#ff4d4f;color:#fff;font-size:10px;border-radius:999px;padding:1px 5px;min-width:16px}
 .menuBtn{display:none;background:transparent;border:1px solid #3a3a3a;color:#fff;border-radius:9px;padding:5px 10px}
 .qf{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}.qf::-webkit-scrollbar{display:none}
@@ -425,13 +428,13 @@ async function afterLogin(r){document.onkeydown=null;S.token=r.token;LS.set('cc_
 function signOutLocal(){S.token=null;S.user=null;S.chat=[];LS.del('cc_token');LS.del('cc_chat');LS.del('cc_ai');document.body.classList.remove('aion');closeAll();document.querySelectorAll('.aifab,.aip').forEach(x=>x.remove());showLogin()}
 
 function startApp(){S.f.mine=S.user.role==='full';ensureFab();
-  $('#app').innerHTML=`<div class="top" id="topbar"><div class="brand">CLOUD</div><button class="bell" id="bell" title="Notifications">🔔<b id="bellN" style="display:none"></b></button><button class="menuBtn" id="menuBtn">☰</button><div class="ctabs" id="ctabs"></div><div class="uchip">${isFull()?'<button class="btn sm" id="bReq">+ Request</button>':''}
+  $('#app').innerHTML=`<div class="top" id="topbar"><div class="brand">CLOUD</div><button class="bell" id="bell" title="Notifications">🔔<b id="bellN" style="display:none"></b></button><button class="bell" id="todoB" title="To-do for your department">📋<b id="todoN" style="display:none"></b></button><button class="menuBtn" id="menuBtn">☰</button><div class="ctabs" id="ctabs"></div><div class="uchip">${isFull()?'<button class="btn sm" id="bReq">+ Request</button>':''}
     ${isFull()?'<button class="btn sm" id="bHist">History</button>':''}${isAdmin()?'<button class="btn sm" id="bAdm">Admin</button>':''}
     <span class="nm">${esc(S.user.name)}</span><span class="role">${ROLE[S.user.role]}</span>
     <button class="btn sm" id="bInstall" style="display:none">⬇ Install app</button><button class="btn sm" id="bAlerts" style="display:none">🔔 Turn on alerts</button><button class="btn sm" id="bMe">PIN</button><button class="btn sm" id="bOut">Sign out</button></div></div>
     <div class="stabs" id="stabs"></div><div id="main"></div>`;
   $('#bOut').onclick=async()=>{try{await call('logout')}catch(e){}signOutLocal()};
-  $('#bMe').onclick=changePin;$('#menuBtn').onclick=()=>$('#topbar').classList.toggle('open');$('#bell').onclick=openNotifs;if($('#bReq'))$('#bReq').onclick=()=>openRequest();pollNotifs();if($('#bHist'))$('#bHist').onclick=openHistory;if($('#bAdm'))$('#bAdm').onclick=openAdmin;
+  $('#bMe').onclick=changePin;$('#menuBtn').onclick=()=>$('#topbar').classList.toggle('open');$('#bell').onclick=openNotifs;$('#todoB').onclick=openTodo;setTimeout(refreshTodo,6000);setInterval(refreshTodo,300000);if($('#bReq'))$('#bReq').onclick=()=>openRequest();pollNotifs();if($('#bHist'))$('#bHist').onclick=openHistory;if($('#bAdm'))$('#bAdm').onclick=openAdmin;
   appExtras();renderCtabs();const c=S.collections.find(x=>x.id===LS.get('cc_cid'))||S.collections[0];
   if(c)selectCollection(c.id);else $('#main').innerHTML='<div class="loading">No collections yet.</div>'}
 function renderCtabs(){$('#ctabs').innerHTML=S.collections.map(c=>`<button class="ctab ${c.id===S.cid?'on':''}" data-id="${esc(c.id)}">${esc(c.name)}</button>`).join('');
@@ -498,6 +501,52 @@ function sampleBind(pg,r,key){const box=$('#smbox',pg);if(!box)return;const cks=
   $('#smRecv',box).onclick=()=>sampleAct(r,key,'receive',sel());
   $('#smDeny',box).onclick=e=>pop(e.currentTarget,'Not received','<div class="field" style="margin-top:0"><label>What happened?</label><input class="inp" placeholder="e.g. nothing arrived yet"></div>','Send',(c,v)=>sampleAct(r,key,'deny',c,{note:v[0]||'Not received'}));
   if($('#smReset',box))$('#smReset',box).onclick=()=>sampleAct(r,key,'reset',sel())}
+const TD_DEPTS=['Planning','Fashion','Production','Creative'];
+function dkey(x){x=norm(x||'');if(/creat|e-?com|content|shoot|photo/.test(x))return 'creative';if(/fash|design/.test(x))return 'fashion';if(/prod|factory|sampl/.test(x))return 'production';if(/plan|merch|admin/.test(x))return 'planning';if(/ware/.test(x))return 'warehouse';return x}
+function myDept(){const u=S.user||{};return dkey(u.dept||(u.role==='admin'?'Planning':''))}
+async function todoData(){S.tmeta=S.tmeta||{};const out=[];
+  for(const c of (S.collections||[])){try{let m=c.id===S.cid&&S.tabsMeta?S.tabsMeta:S.tmeta[c.id];if(!m){m=await call('tabs',{cid:c.id});S.tmeta[c.id]=m}
+    const t=m.tabs[0];if(!t)continue;const ck=c.id+'|'+t.name;let d=S.tc[ck];if(!d){d=await call('tab',{cid:c.id,tab:t.name});prep(d);S.tc[ck]=d}out.push({c,tab:t.name,d})}catch(e){}}
+  return out}
+function buildTodo(sets){const T=[];const add=(dept,sev,title,sub,ref)=>T.push(Object.assign({dept:dkey(dept),sev,title,sub},ref||{}));
+  const n=S.notif||{};
+  if(n.admin)(n.pending||[]).forEach(q=>add('planning','act','Approve request · '+(q.user||''),q.summary||q.type,{rq:1}));
+  else (n.mine||[]).filter(q=>q.status==='pending').forEach(q=>add(myDept(),'wait','Waiting for Amr\'s approval',q.summary||q.type,{rq:1}));
+  const si=(S.stages||[]).findIndex(x=>/sampl/i.test(x.name));
+  sets.forEach(({c,tab,d})=>{const K=d.K;const seen=new Set();
+    d.rows.forEach(r=>{if(!r.c)return;if(r.gk){if(seen.has(r.gk))return;seen.add(r.gk)}const key=rowKey(d,r);if(!key)return;
+      const grp=r.gk&&d.groups&&d.groups[r.gk]?d.groups[r.gk]:[r];const name=(K.name>=0&&String(r.c[K.name]).trim())||key;const ref={cid:c.id,tab,r:r.r,where:c.name};
+      const fi=finalInfo(d,grp);if(fi&&fi.k==='cx')return;
+      const st=rowStage(d,r);const sd=st?dkey(st.d||((S.stages[stageIdx(st.s)]||{}).dept)):'';const idx=st?stageIdx(st.s):-1;
+      if(fi&&fi.k==='lt')add(sd||'planning','late','Late for the drop · '+name,(st?st.s+' · ':'')+'final date after the drop date',ref);
+      if(fi&&fi.k==='pd')add('planning','todo','Final date pending · '+name,'set the final delivery date',ref);
+      if(st&&idx<(S.stages.length-1))add(sd,'todo','In your hands · '+name,'stage: '+st.s+(st.n?' · '+st.n:''),ref);
+      if(!st)add('planning','todo','Stage not set · '+name,'start the product journey',ref);
+      if(!(d.tp||{})[norm(key)]&&!(r.gk&&(d.tp||{})[r.gk]))add('fashion','todo','Tech pack missing · '+name,'upload the tech pack',ref);
+      const cols=smColors(d,r);if(K.color>=0&&!cols[0])add('fashion','todo','Colours not set · '+name,'add the colours',ref);
+      const L=smList(d,r);const notSent=L.filter(x=>!x.s).map(x=>x.c||'style'),wait=L.filter(x=>x.s&&x.s.s==='handed').map(x=>x.c||'style'),bad=L.filter(x=>x.s&&x.s.s==='disputed').map(x=>x.c||'style');
+      if(notSent.length&&(idx>=si&&si>=0||(fi&&fi.k==='lt')))add('production',fi&&fi.k==='lt'?'late':'todo','Shoot sample not sent · '+name,notSent.join(', '),ref);
+      if(wait.length)add('creative','act','Confirm shoot sample · '+name,wait.join(', ')+' handed over — confirm receipt',ref);
+      if(bad.length){add('production','late','Shoot sample NOT received · '+name,bad.join(', '),ref);add('creative','late','Shoot sample NOT received · '+name,bad.join(', '),ref)}
+      if(S.user.role!=='admin'){const miss=d.columns.filter((col,k)=>col.owner&&ownerMine(col.owner)&&col.type!=='image'&&!col.computed&&!grp.some(x=>String(x.c[k]==null?'':x.c[k]).trim())).map(x=>x.name);
+        if(miss.length)add(myDept(),'todo','Fill your fields · '+name,miss.slice(0,4).join(', ')+(miss.length>4?' +'+(miss.length-4):''),Object.assign({mine:1},ref))}
+    })});
+  return T}
+function todoMine(T,dep){const me=myDept();return T.filter(t=>dep==='all'?true:t.dept===(dep||me))}
+async function refreshTodo(){if(!S.user)return;try{const sets=await todoData();S.todo=buildTodo(sets);const n=todoMine(S.todo,isAdmin()?'all':null).filter(t=>t.sev!=='todo'||!isAdmin()).length;const b=$('#todoN');if(b){b.textContent=n;b.style.display=n?'block':'none'}}catch(e){}}
+async function openTodo(){closeAll();overlay();const m=document.createElement('div');m.className='modal';document.body.appendChild(m);
+  m.innerHTML='<div class="mh"><div class="t">📋 To-do</div><button class="btn sm ghost" id="tx">✕</button></div><div class="mb" id="tdb"><div class="loading"><span class="spin"></span> Checking all collections…</div></div>';$('#tx',m).onclick=closeAll;
+  await pollNotifs();await refreshTodo();const T=S.todo||[];let dep=isAdmin()?'all':myDept();
+  const draw=()=>{const L=todoMine(T,dep);const order={late:0,act:1,wait:2,todo:3};L.sort((a,b)=>order[a.sev]-order[b.sev]);
+    const cnt=k=>todoMine(T,k).length;const chips=isAdmin()?`<div class="tdchips">${['all','planning','fashion','production','creative'].map(k=>`<button class="chip ${dep===k?'on':''}" data-d="${k}">${k==='all'?'All':TD_DEPTS.find(x=>dkey(x)===k)} <b>${cnt(k)}</b></button>`).join('')}</div>`:`<div class="muted" style="margin-bottom:8px">Department: <b>${esc(S.user.dept||myDept()||'—')}</b></div>`;
+    const lab={late:'Late',act:'Action needed',wait:'Waiting',todo:'To do'};
+    const grp=['late','act','wait','todo'].map(s=>{const it=L.filter(x=>x.sev===s);if(!it.length)return '';return `<div class="tdg"><div class="tdh ${s}">${lab[s]} <span>${it.length}</span></div>${it.slice(0,80).map((t,i)=>`<div class="tdi" data-i="${T.indexOf(t)}"><div class="tdt">${esc(t.title)}</div><div class="tds">${esc(t.sub||'')}${t.where?` · <span class="muted">${esc(t.where)}</span>`:''}</div></div>`).join('')}${it.length>80?`<div class="muted">+${it.length-80} more</div>`:''}</div>`}).join('');
+    $('#tdb',m).innerHTML=chips+(grp||'<div class="loading">Nothing waiting — all clear ✓</div>');
+    m.querySelectorAll('.tdchips .chip').forEach(b=>b.onclick=()=>{dep=b.dataset.d;draw()});
+    m.querySelectorAll('.tdi').forEach(el=>el.onclick=()=>{const t=T[Number(el.dataset.i)];if(t.rq){closeAll();openNotifs();return}if(t.cid)gotoItem(t.cid,t.tab,t.r)})};
+  draw()}
+async function gotoItem(cid,tab,r){closeAll();LS.set('cc_tab_'+cid,tab);if(S.cid!==cid)selectCollection(cid);else if(S.tab!==tab)selectTab(tab);
+  for(let i=0;i<60;i++){if(S.cid===cid&&S.tab===tab&&S.data&&S.data.cid===cid&&S.data.rows.some(x=>x.r===r))return openPage(r);await new Promise(z=>setTimeout(z,300))}toast('Could not open the item',true)}
 function stageIdx(n){return (S.stages||[]).findIndex(x=>x.name===n)}
 function rowKey(d,r){return(d.K.code>=0&&String(r.c[d.K.code]).trim())||(d.K.name>=0&&String(r.c[d.K.name]).trim())||''}
 function rowTP(d,r){const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return d.tp[a]||d.tp[b]||(r.gk&&d.tp[r.gk])||(()=>{const g=r.gk&&d.groups&&d.groups[r.gk];if(!g)return null;for(const x of g){const t=d.tp[d.K.code>=0?norm(x.c[d.K.code]):'']||d.tp[d.K.name>=0?norm(x.c[d.K.name]):''];if(t)return t}return null})()}
@@ -557,14 +606,14 @@ function openDeptFilter(a){closePop();const depts=Array.from(new Set((S.stages||
 function fitC(v){const n=String(v||'').length;return n>24?' xs':n>14?' sm':''}
 function tagHtml(v){return v?`<span class="tag${fitC(v)}" style="${tagStyle(v)}" title="${esc(v)}">${esc(v)}</span>`:''}
 function finalIdx(d){if(d._fi===undefined)d._fi=d.columns.findIndex(c=>/^\s*final(\s*date)?\s*$/i.test(String(c.name||'')));return d._fi}
-function dropDue(){const c=(S.collections||[]).find(x=>x.id===S.cid);const n=String(c?c.name:'');return /ramadan/i.test(n)?new Date(2027,0,20):/spring|march|\bmar\b/i.test(n)?new Date(2027,2,15):/dec|jan/i.test(n)?new Date(2026,11,15):null}
+function dropDue(cid){const c=(S.collections||[]).find(x=>x.id===(cid||S.cid));const n=String(c?c.name:'');return /ramadan/i.test(n)?new Date(2027,0,20):/spring|march|\bmar\b/i.test(n)?new Date(2027,2,15):/dec|jan/i.test(n)?new Date(2026,11,15):null}
 function parseDay(s){s=String(s||'');let m=s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return {d:+m[1],m:+m[2],y}}m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return {d:+m[3],m:+m[2],y:+m[1]};return null}
 function fixYear(p,due){if(!due)return new Date(p.y,p.m-1,p.d);let best=null;[due.getFullYear()-1,due.getFullYear(),due.getFullYear()+1].forEach(y=>{const t=new Date(y,p.m-1,p.d);if(!best||Math.abs(t-due)<Math.abs(best-due))best=t});return best}
 function finalInfo(d,grp){const i=finalIdx(d);if(i<0)return null;const s=grp.map(x=>String(x.c[i]==null?'':x.c[i]).trim()).find(Boolean);if(!s)return null;
   if(/cancel/i.test(s))return {k:'cx',h:'<span class="fb cx">✕ CANCELLED</span>'};
   const pend=/pend/i.test(s),p=parseDay(s);
   if(!p||p.m<1||p.m>12||p.d<1||p.d>31)return pend?{k:'pd',h:'<span class="fb pd">⏳ PENDING</span>'}:{k:'',h:`<span class="fb">${esc(s)}</span>`};
-  const due=dropDue(),dt=fixYear(p,due),late=!!(due&&dt>due);
+  const due=dropDue(d.cid),dt=fixYear(p,due),late=!!(due&&dt>due);
   return {k:pend?'pd':(late?'lt':''),h:`${pend?'<span class="fb pd">⏳ PENDING</span>':''}<span class="fb dt">📅 ${dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>${due?`<span class="fb ${late?'lt':'ok'}">${late?'⚠ LATE':'✓ ON TIME'}</span>`:''}`}}
 function renderCards(){const d=S.data,K=d.K,rows=filtered();let h='<div class="cards">',n=0;const seen=new Set(),vis={};
   rows.forEach(r=>{if(r.c&&r.gk)(vis[r.gk]=vis[r.gk]||[]).push(r)});
@@ -909,10 +958,11 @@ async function openAdmin(){closeAll();overlay();const m=document.createElement('
       <div class="field"><label>Access</label><select class="inp" id="ur"><option value="viewer" ${u&&u.role==='viewer'?'selected':''}>First 2 tabs only (edits own columns + shared)</option><option value="full" ${!u||u.role==='full'?'selected':''}>Full access</option><option value="admin" ${u&&u.role==='admin'?'selected':''}>Admin</option></select></div>
       <div class="field"><label>${u?'New PIN (blank = keep)':'PIN'}</label><input class="inp" id="up" inputmode="numeric" maxlength="8" placeholder="4–8 digits"></div>
       <div class="field"><label>Edits columns of</label><input class="inp" id="uo" list="uol" value="${esc(u?u.owners||'':'')}" placeholder="e.g. TALA (blank = name)"><datalist id="uol">${ownerList().map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>
+      <div class="field"><label>Department</label><select class="inp" id="udp">${['','Planning','Fashion','Production','Creative','Warehouse'].map(x=>`<option ${u&&(u.dept||'')===x?'selected':''} value="${x}">${x||'—'}</option>`).join('')}</select></div>
       <div class="field"><label>Status</label><select class="inp" id="ua"><option value="1" ${!u||u.active?'selected':''}>Active</option><option value="0" ${u&&!u.active?'selected':''}>Disabled</option></select></div>
       <button class="btn pri" id="us">${u?'Save':'Add user'}</button>${u?'<button class="btn" id="ux">New</button>':''}<span class="err" id="ue"></span></div>`;
     const draw=ed=>{ab().innerHTML=form(ed)+`<table class="lt"><thead><tr><th>Name</th><th>Access</th><th>Edits columns of</th><th>Status</th><th></th></tr></thead><tbody>`+list.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${ROLE[u.role]}</td><td class="muted">${u.role==='admin'?'All':esc(u.owners||u.name)}</td><td>${u.active?'Active':'Disabled'}</td><td style="text-align:right"><button class="btn sm" data-e="${esc(u.id)}">Edit / PIN</button> ${u.id!==S.user.id?`<button class="btn sm" data-d="${esc(u.id)}">Delete</button>`:''}</td></tr>`).join('')+'</tbody></table>';
-      $('#us',m).onclick=async()=>{try{list=await call('saveUser',{id:$('#uid',m).value||null,name:$('#un',m).value,role:$('#ur',m).value,pin:$('#up',m).value,owners:$('#uo',m).value,active:$('#ua',m).value==='1'});toast('User saved');draw(null)}catch(e){$('#ue',m).textContent=e.message}};
+      $('#us',m).onclick=async()=>{try{list=await call('saveUser',{id:$('#uid',m).value||null,name:$('#un',m).value,role:$('#ur',m).value,pin:$('#up',m).value,owners:$('#uo',m).value,dept:$('#udp',m).value,active:$('#ua',m).value==='1'});toast('User saved');draw(null)}catch(e){$('#ue',m).textContent=e.message}};
       if($('#ux',m))$('#ux',m).onclick=()=>draw(null);ab().querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>draw(list.find(u=>u.id===b.dataset.e)));
       ab().querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{if(!confirmInline(b))return;try{list=await call('deleteUser',{id:b.dataset.d});draw(null)}catch(e){toast(e.message,true)}})};draw(null)}
   async function colls(){ab().innerHTML='<div class="loading"><span class="spin"></span></div>';let list;try{list=await call('collections')}catch(e){ab().innerHTML=esc(e.message);return}
