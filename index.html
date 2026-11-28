@@ -181,6 +181,9 @@ table.lt{border-collapse:collapse;width:100%;font-size:12px}
 html,body{overflow-x:hidden;max-width:100%}
 .top{min-width:0}
 .ctabs{min-width:0;scrollbar-width:none}.ctabs::-webkit-scrollbar{display:none}
+body.busy::before{content:'';position:fixed;top:0;left:0;height:3px;width:40%;background:linear-gradient(90deg,#7c3aed,#2563eb);z-index:9999;animation:busybar 1s ease-in-out infinite}
+@keyframes busybar{0%{left:-40%}100%{left:100%}}
+.btn.busyb{position:relative;color:transparent!important;pointer-events:none;opacity:.85}.btn.busyb::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border:2px solid #bbb;border-top-color:#333;border-radius:50%;animation:sp .7s linear infinite}
 .bell{position:relative;background:transparent;border:1px solid #3a3a3a;color:#fff;border-radius:9px;padding:5px 9px}
 .tdchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.tdchips .chip b{margin-left:4px}.tdg{margin-bottom:14px}.tdh{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:6px;align-items:center}.tdh span{background:#f1efea;border-radius:999px;padding:0 7px;font-size:11px}.tdh.late{color:#b42318}.tdh.act{color:#b45309}.tdh.wait{color:#1d3f8f}.tdh.todo{color:#555}
 .tdi{padding:9px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff}.tdi:hover{background:#fafaf8}.tdt{font-weight:600;font-size:13.5px}.tds{font-size:12px;color:#6b675f;margin-top:2px}
@@ -367,7 +370,13 @@ body.aion .aifab{display:none}
 <script>
 const S={token:null,user:null,collections:[],cid:null,tabsMeta:null,tab:null,data:null,f:{q:'',cols:{},mine:false},view:'cards',editing:false,cur:null,tc:{},opts:{}};
 const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-function call(action,payload){if(window.CC_API){return fetch(window.CC_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:S.token,action,payload:payload||null})}).then(r=>{if(!r.ok)throw new Error('Server error '+r.status);return r.json()}).then(r=>{if(r.ok)return r.data;if(r.code==='AUTH'&&action!=='login')signOutLocal();throw new Error(r.error)})}
+const QUIET=new Set(['notifs','feed','aiWarm','imgs','pushKey','pushSub','tabs','tab','opts','me','status','users','history','item','aiSettings']);
+document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.closest('button');if(b){S.lastBtn=b;S.lastBtnT=Date.now()}},true);
+function call(action,payload){if(QUIET.has(action))return call0(action,payload);S.busy=(S.busy||0)+1;document.body.classList.add('busy');
+  const b=S.lastBtn&&Date.now()-S.lastBtnT<1500&&document.body.contains(S.lastBtn)?S.lastBtn:null;if(b){b.classList.add('busyb');b.disabled=true;S.lastBtn=null}
+  const done=()=>{S.busy--;if(S.busy<=0){S.busy=0;document.body.classList.remove('busy')}if(b){b.classList.remove('busyb');b.disabled=false}};
+  return call0(action,payload).then(r=>{done();return r},e=>{done();throw e})}
+function call0(action,payload){if(window.CC_API){return fetch(window.CC_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:S.token,action,payload:payload||null})}).then(r=>{if(!r.ok)throw new Error('Server error '+r.status);return r.json()}).then(r=>{if(r.ok)return r.data;if(r.code==='AUTH'&&action!=='login')signOutLocal();throw new Error(r.error)})}
   return new Promise((res,rej)=>{google.script.run.withSuccessHandler(s=>{const r=JSON.parse(s);if(r.ok)res(r.data);else{if(r.code==='AUTH'&&action!=='login')signOutLocal();rej(new Error(r.error))}}).withFailureHandler(e=>rej(e)).api(S.token,action,payload?JSON.stringify(payload):'')})}
 const $=(s,el=document)=>el.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -483,14 +492,22 @@ function smBadge(d,r){const L=smList(d,r);if(!L.length)return '';const n=L.lengt
   return `<span class="fb smn" title="${tip}">📸 No shoot sample${n>1?' (0/'+n+')':''}</span>`}
 function sampleHtml(d,r,key){if(!key)return '';const L=smList(d,r);const ad=S.user&&S.user.role==='admin';const me=norm(S.user&&S.user.name);
   const n=L.length,rc=L.filter(x=>x.s&&x.s.s==='received').length;
-  const row=x=>{const s=x.s;const st=!s?'<span class="smp n">Not sent</span>':s.s==='received'?'<span class="smp r">Received ✓</span>':s.s==='disputed'?'<span class="smp d">Not received ⚠</span>':'<span class="smp h">Waiting</span>';
+  const row=x=>{const s=x.s;const st=(s&&s.pend?'<span class="spin" style="width:12px;height:12px"></span>':'')+(!s?'<span class="smp n">Not sent</span>':s.s==='received'?'<span class="smp r">Received ✓</span>':s.s==='disputed'?'<span class="smp d">Not received ⚠</span>':'<span class="smp h">Waiting</span>');
     const info=!s?'':s.s==='received'?`${esc(s.hb)} → <b>${esc(s.rb)}</b> · ${fmtT(s.rt)}`:s.s==='disputed'?`<span style="color:#b42318">${esc(s.rb)}: ${esc(s.n)}</span> · ${fmtT(s.rt)}`:`by ${esc(s.hb)}${s.to?' → '+esc(s.to):''} · ${fmtT(s.ht)}${s.n?' · '+esc(s.n):''}`;
     return `<label class="smrow"><input type="checkbox" class="smck" data-c="${esc(x.c)}"><span class="smc">${esc(x.c||'Whole style')}</span>${st}<span class="smi">${info}</span></label>`};
   return `<div class="box" id="smbox"><h3><span class="av" style="background:#7c3aed">📸</span>Shoot samples<span class="sp"></span><span class="sub">${rc}/${n} received</span></h3><div class="tp">
    ${n>1?'<label class="smrow small"><input type="checkbox" id="small"><span class="muted">Select all colours</span></label>':''}${L.map(row).join('')}
    <div class="smbtns"><button class="btn sm" id="smHand" disabled>📦 Hand over</button><button class="btn sm pri" id="smRecv" disabled>✓ I received</button><button class="btn sm ghost" id="smDeny" disabled>✕ Not received</button>${ad?'<button class="btn sm ghost" id="smReset" disabled>Reset</button>':''}<span class="muted" id="smhint" style="align-self:center;font-size:12px">Tick the colours first</span></div></div></div>`}
-async function sampleAct(r,key,act,colors,extra){const d=S.data;try{const res=await call('setSample',Object.assign({cid:S.cid,tab:S.tab,row:r.r,key,act,colors},extra||{}));d.sm=res.map||{};renderBody();renderPage();
-  const ok=res.done.length;if(res.errors.length)toast((ok?ok+' done · ':'')+res.errors.join(' · '),!ok);else toast(act==='hand'?`Handed over ${ok} colour(s) — Creative gets a notification ✓`:act==='receive'?`Receipt confirmed for ${ok} colour(s) ✓`:act==='deny'?'Marked as not received':'Reset ✓')}catch(e){toast(e.message,true)}}
+async function sampleAct(r,key,act,colors,extra){const d=S.data;const prev=Object.assign({},d.sm||{});const me=S.user.name,now=new Date().toISOString();extra=extra||{};
+  d.sm=Object.assign({},d.sm||{});colors.forEach(c=>{const k=norm(c?key+' | '+c:key);const cur=d.sm[k];
+    if(act==='hand')d.sm[k]={s:'handed',hb:me,ht:now,to:extra.to||'',rb:'',rt:'',n:extra.note||'',pend:1};
+    else if(act==='receive'&&cur&&cur.s!=='received')d.sm[k]=Object.assign({},cur,{s:'received',rb:me,rt:now,pend:1});
+    else if(act==='deny'&&cur&&cur.s!=='received')d.sm[k]=Object.assign({},cur,{s:'disputed',rb:me,rt:now,n:extra.note||'Not received',pend:1});
+    else if(act==='reset')delete d.sm[k]});
+  renderBody();if($('.page'))renderPage();toast('Saving…');
+  try{const res=await call('setSample',Object.assign({cid:S.cid,tab:S.tab,row:r.r,key,act,colors},extra));d.sm=res.map||{};renderBody();if($('.page'))renderPage();
+    const ok=res.done.length;if(res.errors.length)toast((ok?ok+' done · ':'')+res.errors.join(' · '),!ok);else toast(act==='hand'?`Handed over ${ok} colour(s) ✓ — Creative notified`:act==='receive'?`Receipt confirmed for ${ok} colour(s) ✓`:act==='deny'?'Marked as not received ✓':'Reset ✓')}
+  catch(e){d.sm=prev;renderBody();if($('.page'))renderPage();toast('Not saved — '+e.message,true)}}
 function sampleBind(pg,r,key){const box=$('#smbox',pg);if(!box)return;const cks=[...box.querySelectorAll('.smck')];const sel=()=>cks.filter(x=>x.checked).map(x=>x.dataset.c);
   const upd=()=>{const n=sel().length;['#smHand','#smRecv','#smDeny','#smReset'].forEach(id=>{const b=$(id,box);if(b)b.disabled=!n});$('#smhint',box).textContent=n?n+' selected':'Tick the colours first';const all=$('#small',box);if(all)all.checked=n===cks.length};
   cks.forEach(x=>x.onchange=upd);if($('#small',box))$('#small',box).onchange=e=>{cks.forEach(x=>x.checked=e.target.checked);upd()};if(cks.length===1){cks[0].checked=true;upd()}
