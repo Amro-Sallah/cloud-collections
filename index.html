@@ -348,7 +348,8 @@ body.aion .aifab{display:none}
 .cst{display:flex;align-items:center;gap:6px;font-size:12px;color:#3d3a35;margin-top:4px;min-width:0}.sdot{width:7px;height:7px;border-radius:50%;background:#7c7768;flex:none}.stx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pill.dept{background:#eef4ff;color:#1d3f8f}
 .fb.smn{background:#f1efea;color:#8a877f}.fb.smh{background:#fff4e5;color:#b45309}.fb.smr{background:#e8f7ee;color:#15803d}.fb.smd{background:#fde8e8;color:#b42318}
-.smline{padding:4px 0;color:#8a877f}.smline.ok{color:#222}.smline .ic{display:inline-block;width:16px;font-style:normal;font-weight:700}.smbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.smrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--soft);cursor:pointer;flex-wrap:wrap}.smrow.small{border:0;padding:2px 0 6px}.smc{font-weight:600;min-width:90px}.smi{font-size:12px;color:#6b675f;flex:1;min-width:140px}
+.smp{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}.smp.n{background:#f1efea;color:#8a877f}.smp.h{background:#fff4e5;color:#b45309}.smp.r{background:#e8f7ee;color:#15803d}.smp.d{background:#fde8e8;color:#b42318}.smbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .tpx{margin-left:auto;flex:none;font-size:10px;font-weight:700;color:#b42318;border:1px solid #f3c4bf;border-radius:4px;padding:0 5px;line-height:16px}
 .cline{font-size:12px;color:#8a867d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card .fbs{margin:6px 0 0}.card .fb{font-size:10.5px;font-weight:600;padding:2px 8px}
@@ -466,33 +467,37 @@ function prep(d){
   d.rows.forEach(r=>{if(r.c&&r.gk&&!hasImg(r)&&imgBy[r.gk]){r.img=Object.assign({},imgBy[r.gk]);r.imgInh=true}});
   d.groups={};d.rows.forEach(r=>{if(r.c&&r.gk)(d.groups[r.gk]=d.groups[r.gk]||[]).push(r)})}
 function rowStage(d,r){const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return d.sg[a]||d.sg[b]||(r.gk&&d.sg[r.gk])||null}
-function rowSample(d,r){const m=d.sm||{};const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return m[a]||m[b]||(r.gk&&m[r.gk])||null}
-function smBadge(d,r){const s=rowSample(d,r);if(!s)return '<span class="fb smn" title="No shoot sample handed over yet">📸 No shoot sample</span>';
-  if(s.s==='received')return `<span class="fb smr" title="Received by ${esc(s.rb)} ${esc(fmtT(s.rt))}">📸 Sample received ✓</span>`;
-  if(s.s==='disputed')return `<span class="fb smd" title="${esc(s.rb)}: ${esc(s.n)}">📸 Sample NOT received ⚠</span>`;
-  return `<span class="fb smh" title="Handed by ${esc(s.hb)} ${esc(fmtT(s.ht))}">📸 Sample sent · awaiting receipt</span>`}
-function sampleHtml(d,r,key){const s=rowSample(d,r);const me=S.user&&S.user.name;const ad=S.user&&S.user.role==='admin';
-  const mine=s&&norm(s.hb)===norm(me);const canRecv=s&&s.s!=='received'&&(!mine||ad);
-  let st,steps;
-  if(!s){st='<span class="sub">no shoot sample yet</span>'}
-  else if(s.s==='received'){st=`<span class="sub" style="color:var(--ok)">✓ received by ${esc(s.rb)} ${fmtT(s.rt)}</span>`}
-  else if(s.s==='disputed'){st=`<span class="sub" style="color:#b42318">⚠ ${esc(s.rb)} says NOT received</span>`}
-  else st=`<span class="sub" style="color:#b45309">waiting for ${esc(s.to||'Creative')} to confirm</span>`;
-  const line=(ok,t)=>`<div class="smline ${ok?'ok':''}"><i class="ic">${ok?'✓':'○'}</i> ${t}</div>`;
-  steps=line(!!s,s?`Handed over by <b>${esc(s.hb)}</b>${s.to?` to <b>${esc(s.to)}</b>`:''} · ${fmtT(s.ht)}`:'Production hands the shoot sample to Creative')+
-    line(s&&s.s==='received',s&&s.s==='received'?`Received by <b>${esc(s.rb)}</b> · ${fmtT(s.rt)}`:s&&s.s==='disputed'?`<span style="color:#b42318">${esc(s.rb)}: not received — ${esc(s.n)} · ${fmtT(s.rt)}</span>`:'Creative confirms they received it');
-  const btn=key?`${(!s||s.s!=='received'||ad)?`<button class="btn sm" id="smHand">${s?'📦 Hand over again':'📦 Hand over to Creative'}</button>`:''}${canRecv?`<button class="btn sm pri" id="smRecv">✓ I received it</button><button class="btn sm ghost" id="smDeny">✕ Not received</button>`:''}${s&&ad?`<button class="btn sm ghost" id="smReset" title="Clear the record">Reset</button>`:''}`:'';
-  return `<div class="box"><h3><span class="av" style="background:#7c3aed">📸</span>Shoot sample<span class="sp"></span>${st}</h3><div class="tp">${steps}${s&&s.n&&s.s!=='disputed'?`<div class="muted" style="margin-top:4px">Note: ${esc(s.n)}</div>`:''}<div class="smbtns">${btn}</div></div></div>`}
-async function sampleAct(r,key,act,extra){const d=S.data;try{const res=await call('setSample',Object.assign({cid:S.cid,tab:S.tab,row:r.r,key,act},extra||{}));const k=norm(key);d.sm=d.sm||{};if(res)d.sm[k]=res;else delete d.sm[k];renderBody();renderPage();toast(act==='hand'?'Handed over — Creative will get a notification ✓':act==='receive'?'Receipt confirmed ✓':act==='deny'?'Marked as not received':'Reset ✓')}catch(e){toast(e.message,true)}}
-function sampleBind(pg,r,key){const g=x=>$(x,pg);
-  if(g('#smHand'))g('#smHand').onclick=e=>{closePop();const p=document.createElement('div');p.className='pop';S.editing=true;
-    p.innerHTML=`<div class="hd"><div class="t">Hand over shoot sample</div><div class="s">${esc(key)}</div></div><div class="pb"><div class="field" style="margin-top:0"><label>Handed to</label><input class="inp" id="smto" placeholder="e.g. Sara (Creative)" value="Creative"></div><div class="field"><label>Note (optional)</label><input class="inp" id="smn" placeholder="e.g. size M, black"></div></div><div class="pf"><span style="flex:1"></span><button class="btn sm ghost" id="smx">Cancel</button><button class="btn sm pri" id="smok">Hand over</button></div>`;
-    place(p,e.currentTarget);$('#smx',p).onclick=closePop;$('#smok',p).onclick=async()=>{const to=$('#smto',p).value,note=$('#smn',p).value;closePop();await sampleAct(r,key,'hand',{to,note})}};
-  if(g('#smRecv'))g('#smRecv').onclick=()=>sampleAct(r,key,'receive');
-  if(g('#smDeny'))g('#smDeny').onclick=()=>{closePop();const p=document.createElement('div');p.className='pop';S.editing=true;
-    p.innerHTML=`<div class="hd"><div class="t">Not received</div><div class="s">${esc(key)}</div></div><div class="pb"><div class="field" style="margin-top:0"><label>What happened?</label><input class="inp" id="smdn" placeholder="e.g. nothing arrived yet"></div></div><div class="pf"><span style="flex:1"></span><button class="btn sm ghost" id="smx">Cancel</button><button class="btn sm pri" id="smok">Send</button></div>`;
-    place(p,g('#smDeny'));$('#smx',p).onclick=closePop;$('#smok',p).onclick=async()=>{const note=$('#smdn',p).value||'Not received';closePop();await sampleAct(r,key,'deny',{note})}};
-  if(g('#smReset'))g('#smReset').onclick=()=>sampleAct(r,key,'reset')}
+function smColors(d,r){const g=r.gk&&d.groups&&d.groups[r.gk]?d.groups[r.gk]:[r];const K=d.K;const seen=new Map();
+  if(K.color>=0)g.forEach(x=>String(x.c[K.color]==null?'':x.c[K.color]).split(/\n|,|[/]/).map(y=>y.trim()).filter(Boolean).forEach(y=>{const k=norm(y);if(!seen.has(k))seen.set(k,y)}));
+  return seen.size?[...seen.values()]:['']}
+function smGet(d,key,col){const m=d.sm||{};return m[norm(col?key+' | '+col:key)]||null}
+function smList(d,r){const key=rowKey(d,r);if(!key)return [];return smColors(d,r).map(c=>({c,s:smGet(d,key,c)}))}
+function smBadge(d,r){const L=smList(d,r);if(!L.length)return '';const n=L.length,rc=L.filter(x=>x.s&&x.s.s==='received').length,hd=L.filter(x=>x.s&&x.s.s==='handed').length,dp=L.filter(x=>x.s&&x.s.s==='disputed').length;
+  const tip=esc(L.map(x=>(x.c||'Style')+': '+(!x.s?'not sent':x.s.s==='received'?'received':x.s.s==='disputed'?'NOT received':'waiting')).join(' · '));
+  if(dp)return `<span class="fb smd" title="${tip}">📸 ${dp} not received ⚠</span>`;
+  if(rc===n)return `<span class="fb smr" title="${tip}">📸 Samples received ✓${n>1?' '+n+'/'+n:''}</span>`;
+  if(rc||hd)return `<span class="fb smh" title="${tip}">📸 ${rc}/${n} received${hd?' · '+hd+' waiting':''}</span>`;
+  return `<span class="fb smn" title="${tip}">📸 No shoot sample${n>1?' (0/'+n+')':''}</span>`}
+function sampleHtml(d,r,key){if(!key)return '';const L=smList(d,r);const ad=S.user&&S.user.role==='admin';const me=norm(S.user&&S.user.name);
+  const n=L.length,rc=L.filter(x=>x.s&&x.s.s==='received').length;
+  const row=x=>{const s=x.s;const st=!s?'<span class="smp n">Not sent</span>':s.s==='received'?'<span class="smp r">Received ✓</span>':s.s==='disputed'?'<span class="smp d">Not received ⚠</span>':'<span class="smp h">Waiting</span>';
+    const info=!s?'':s.s==='received'?`${esc(s.hb)} → <b>${esc(s.rb)}</b> · ${fmtT(s.rt)}`:s.s==='disputed'?`<span style="color:#b42318">${esc(s.rb)}: ${esc(s.n)}</span> · ${fmtT(s.rt)}`:`by ${esc(s.hb)}${s.to?' → '+esc(s.to):''} · ${fmtT(s.ht)}${s.n?' · '+esc(s.n):''}`;
+    return `<label class="smrow"><input type="checkbox" class="smck" data-c="${esc(x.c)}"><span class="smc">${esc(x.c||'Whole style')}</span>${st}<span class="smi">${info}</span></label>`};
+  return `<div class="box" id="smbox"><h3><span class="av" style="background:#7c3aed">📸</span>Shoot samples<span class="sp"></span><span class="sub">${rc}/${n} received</span></h3><div class="tp">
+   ${n>1?'<label class="smrow small"><input type="checkbox" id="small"><span class="muted">Select all colours</span></label>':''}${L.map(row).join('')}
+   <div class="smbtns"><button class="btn sm" id="smHand" disabled>📦 Hand over</button><button class="btn sm pri" id="smRecv" disabled>✓ I received</button><button class="btn sm ghost" id="smDeny" disabled>✕ Not received</button>${ad?'<button class="btn sm ghost" id="smReset" disabled>Reset</button>':''}<span class="muted" id="smhint" style="align-self:center;font-size:12px">Tick the colours first</span></div></div></div>`}
+async function sampleAct(r,key,act,colors,extra){const d=S.data;try{const res=await call('setSample',Object.assign({cid:S.cid,tab:S.tab,row:r.r,key,act,colors},extra||{}));d.sm=res.map||{};renderBody();renderPage();
+  const ok=res.done.length;if(res.errors.length)toast((ok?ok+' done · ':'')+res.errors.join(' · '),!ok);else toast(act==='hand'?`Handed over ${ok} colour(s) — Creative gets a notification ✓`:act==='receive'?`Receipt confirmed for ${ok} colour(s) ✓`:act==='deny'?'Marked as not received':'Reset ✓')}catch(e){toast(e.message,true)}}
+function sampleBind(pg,r,key){const box=$('#smbox',pg);if(!box)return;const cks=[...box.querySelectorAll('.smck')];const sel=()=>cks.filter(x=>x.checked).map(x=>x.dataset.c);
+  const upd=()=>{const n=sel().length;['#smHand','#smRecv','#smDeny','#smReset'].forEach(id=>{const b=$(id,box);if(b)b.disabled=!n});$('#smhint',box).textContent=n?n+' selected':'Tick the colours first';const all=$('#small',box);if(all)all.checked=n===cks.length};
+  cks.forEach(x=>x.onchange=upd);if($('#small',box))$('#small',box).onchange=e=>{cks.forEach(x=>x.checked=e.target.checked);upd()};if(cks.length===1){cks[0].checked=true;upd()}
+  const pop=(anchor,title,body,okTxt,fn)=>{closePop();const p=document.createElement('div');p.className='pop';S.editing=true;
+    p.innerHTML=`<div class="hd"><div class="t">${title}</div><div class="s">${esc(key)} · ${esc(sel().map(c=>c||'Whole style').join(', '))}</div></div><div class="pb">${body}</div><div class="pf"><span style="flex:1"></span><button class="btn sm ghost" id="smx">Cancel</button><button class="btn sm pri" id="smok">${okTxt}</button></div>`;
+    place(p,anchor);$('#smx',p).onclick=closePop;$('#smok',p).onclick=async()=>{const v=[...p.querySelectorAll('input')].map(x=>x.value);const c=sel();closePop();await fn(c,v)}};
+  $('#smHand',box).onclick=e=>pop(e.currentTarget,'Hand over shoot samples','<div class="field" style="margin-top:0"><label>Handed to</label><input class="inp" value="Sara (Creative)"></div><div class="field"><label>Note (optional)</label><input class="inp" placeholder="e.g. size M"></div>','Hand over',(c,v)=>sampleAct(r,key,'hand',c,{to:v[0],note:v[1]}));
+  $('#smRecv',box).onclick=()=>sampleAct(r,key,'receive',sel());
+  $('#smDeny',box).onclick=e=>pop(e.currentTarget,'Not received','<div class="field" style="margin-top:0"><label>What happened?</label><input class="inp" placeholder="e.g. nothing arrived yet"></div>','Send',(c,v)=>sampleAct(r,key,'deny',c,{note:v[0]||'Not received'}));
+  if($('#smReset',box))$('#smReset',box).onclick=()=>sampleAct(r,key,'reset',sel())}
 function stageIdx(n){return (S.stages||[]).findIndex(x=>x.name===n)}
 function rowKey(d,r){return(d.K.code>=0&&String(r.c[d.K.code]).trim())||(d.K.name>=0&&String(r.c[d.K.name]).trim())||''}
 function rowTP(d,r){const a=d.K.code>=0?norm(r.c[d.K.code]):'',b=d.K.name>=0?norm(r.c[d.K.name]):'';return d.tp[a]||d.tp[b]||(r.gk&&d.tp[r.gk])||(()=>{const g=r.gk&&d.groups&&d.groups[r.gk];if(!g)return null;for(const x of g){const t=d.tp[d.K.code>=0?norm(x.c[d.K.code]):'']||d.tp[d.K.name>=0?norm(x.c[d.K.name]):''];if(t)return t}return null})()}
